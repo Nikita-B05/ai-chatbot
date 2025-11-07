@@ -46,7 +46,7 @@
 		4 to 7
 			Age -/25 > Signature
 			Age +/26 > Day1+
-		1 to 4
+		1 to 3
 			Age -/25 > Day1+
 			Age +/26 > Day1
 6.Excluding marijuana, cannabis or hashish, have you ever used any other illicit drugs such as Amphetamines, Anabolic Steroids, Barbiturates, Cocaine, Ecstasy, Hallucinogens, Heroin, Methadone, Opium, Speed, LSD, DMT, or any of the following not prescribed by a doctor or physician: Morphine, Demerol, Codein, or Fentanyl?
@@ -90,7 +90,7 @@
 			If YES > DECLINE
 			If NO > When did you complete your sentence, parole or probation (number of years)?
 				< 3 years > Guaranteed+
-				4 -5years > Deferred+
+				3-5years > Deferred+
 				> 5 years > Signature
 10. Excluding annual tests, routine pregnancy or childbirth-related follow-ups with normal results, common cold, flu or seasonal allergies, strains or sprains: [A] Do you have any physical or mental symptoms for which you have not yet consulted a health professional?
 	If NO > Day1
@@ -108,9 +108,9 @@
 
 
 				When was your last follow-up?
-					< 2 years ago CHECK If BMI < 40 Signature, If current age < 40 or smoker Deferred+, OTHERWISE Signature
+					< 2 years ago CHECK If BMI < 40 Signature, If current age < 40 or smoker Deferred+, OTHERWISE Guaranteed+
 					CHECK If current age <40 or smoker Guaranteed+
-					> 2 years ago CHECK If BMI < 40 Deferred+ (If current age < 40 or smoker Guaranteed+), OTHERWISE Guaranteed+
+					>= 2 years ago CHECK If BMI < 40 Deferred+ (If current age < 40 or smoker Guaranteed+), OTHERWISE Guaranteed+
 12. [Female] Have you ever been diagnosed with gestational diabetes (within the last 2 years), diabetes or pre-diabetes? (diabetes) If NO > Day1
 	If YES > Were you diagnosed with Diabetes type 1? (diabetes1)
 		If YES > CHECK If BMI >40 OR YES TO CAD Q11 (CAD) > Guaranteed+, OTHERWISE Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions or nephropathy?

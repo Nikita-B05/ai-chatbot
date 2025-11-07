@@ -89,7 +89,7 @@ export const ALCOHOL_THRESHOLDS = {
 
 // Marijuana frequency thresholds (times per week)
 export const MARIJUANA_FREQUENCY = {
-  LOW: { min: 1, max: 4 }, // 1-4 times/week
+  LOW: { min: 1, max: 3 }, // 1-3 times/week
   MODERATE: { min: 4, max: 7 }, // 4-7 times/week
   HIGH: { min: 8, max: 14 }, // 8-14 times/week
   VERY_HIGH: { min: 15, max: Number.POSITIVE_INFINITY }, // 15+ times/week

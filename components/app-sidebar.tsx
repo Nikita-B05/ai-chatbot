@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
-import { PlusIcon } from "@/components/icons";
+import { PlusIcon, SparklesIcon } from "@/components/icons";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
@@ -28,13 +28,16 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           <SidebarMenu>
             <div className="flex flex-row items-center justify-between">
               <Link
-                className="flex flex-row items-center gap-3"
-                href="/"
+                className="flex flex-row items-center gap-0"
+                href="https://onedayinsurance.ca/"
+                rel="noopener noreferrer"
+                target="_blank"
                 onClick={() => {
                   setOpenMobile(false);
                 }}
               >
-                <span className="cursor-pointer rounded-md px-2 font-semibold text-lg hover:bg-muted">
+                <SparklesIcon size={20} />
+                <span className="rounded-md px-2 font-semibold text-lg">
                 One Day AI
                 </span>
               </Link>

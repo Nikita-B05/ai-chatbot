@@ -570,7 +570,7 @@ export function evaluateQ11Rules(
       if (age < AGE_THRESHOLDS.NEUROMUSCULAR_40 || isSmoker(state)) {
         return { planFilter: "Deferred+" };
       }
-      return { planFilter: "Signature" };
+      return { planFilter: "Guaranteed+" };
     }
     if (age < AGE_THRESHOLDS.NEUROMUSCULAR_40 || isSmoker(state)) {
       return { planFilter: "Guaranteed+" };
@@ -779,16 +779,18 @@ export function evaluateQ16Rules(
   _state: QuestionnaireClientState,
   answer: Q16Answer
 ): RuleEvaluationResult {
-  if (!answer.genitourinary) {
-    return { planFilter: "Day1" };
+  if (answer.everDiagnosed) {
+    return { planFilter: "Deferred+" };
   }
 
-  // Ever diagnosed = Deferred+
-  // In the last 2 years, have you been diagnosed with or told you had sugar or blood in the urine...
-  if (answer.followUpNormal === true) {
-    return { planFilter: "Day1+" };
+  if (answer.diagnosedLast2Years) {
+    if (answer.followUpNormal === true) {
+      return { planFilter: "Day1+" };
+    }
+    return { planFilter: "Deferred+" };
   }
-  return { planFilter: "Deferred+" };
+
+  return { planFilter: "Day1" };
 }
 
 /**
@@ -1012,7 +1014,9 @@ export function evaluateQ22Rules(
   const bmi = state.bmi ?? 0;
   const age = state.age ?? 0;
   const hasQ12 = state.answers.q12?.diabetes === true;
-  const hasQ16 = state.answers.q16?.genitourinary === true;
+  const hasQ16 =
+    state.answers.q16?.everDiagnosed === true ||
+    state.answers.q16?.diagnosedLast2Years === true;
 
   // if YES to #12, #16, or If BMI >43 -> Guaranteed+
   if (hasQ12 || hasQ16 || bmi > BMI_CONDITION_THRESHOLDS.Q22_GUARANTEED_PLUS) {
