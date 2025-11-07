@@ -18,6 +18,7 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
+import type { QuestionnaireClientState } from "../questionaire/types";
 import { generateUUID } from "../utils";
 import {
   type Chat,
@@ -243,11 +244,156 @@ export async function getChatById({ id }: { id: string }) {
   }
 }
 
-export async function saveMessages({ messages }: { messages: DBMessage[] }) {
+export async function saveMessages({
+  messages,
+}: {
+  messages: DBMessage[];
+}) {
   try {
     return await db.insert(message).values(messages);
   } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to save messages");
+  }
+}
+
+/**
+ * Save a message with optional questionnaire state snapshot
+ */
+export async function saveMessageWithStateSnapshot({
+  message: msg,
+  stateSnapshot,
+  answeredQuestionId,
+}: {
+  message: Omit<DBMessage, "stateSnapshot" | "answeredQuestionId">;
+  stateSnapshot?: QuestionnaireClientState | null;
+  answeredQuestionId?: string | null;
+}) {
+  try {
+    return await db.insert(message).values({
+      ...msg,
+      stateSnapshot: stateSnapshot ?? null,
+      answeredQuestionId: answeredQuestionId ?? null,
+    });
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to save message with state snapshot"
+    );
+  }
+}
+
+/**
+ * Enable questionnaire mode for a chat
+ */
+export async function enableChatQuestionnaireMode({
+  chatId,
+  initialState,
+}: {
+  chatId: string;
+  initialState: QuestionnaireClientState;
+}) {
+  try {
+    return await db
+      .update(chat)
+      .set({
+        questionaireMode: true,
+        clientState: initialState,
+      })
+      .where(eq(chat.id, chatId));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to enable questionnaire mode"
+    );
+  }
+}
+
+/**
+ * Update chat's questionnaire state
+ */
+export async function updateChatQuestionnaireState({
+  chatId,
+  state,
+  rateType,
+}: {
+  chatId: string;
+  state: QuestionnaireClientState;
+  rateType?: "SMOKER" | "NON_SMOKER" | null;
+}) {
+  try {
+    const updateData: {
+      clientState: QuestionnaireClientState;
+      rateType?: "SMOKER" | "NON_SMOKER" | null;
+    } = {
+      clientState: state,
+    };
+
+    if (rateType !== undefined) {
+      updateData.rateType = rateType;
+    }
+
+    return await db.update(chat).set(updateData).where(eq(chat.id, chatId));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update chat questionnaire state"
+    );
+  }
+}
+
+/**
+ * Get state snapshot by message ID
+ */
+export async function getStateSnapshotByMessageId({
+  messageId,
+}: {
+  messageId: string;
+}): Promise<QuestionnaireClientState | null> {
+  try {
+    const [msg] = await db
+      .select({ stateSnapshot: message.stateSnapshot })
+      .from(message)
+      .where(eq(message.id, messageId))
+      .limit(1);
+
+    return msg?.stateSnapshot ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get state snapshot by message id"
+    );
+  }
+}
+
+/**
+ * Get last state snapshot for a chat
+ */
+export async function getLastStateSnapshot({
+  chatId,
+}: {
+  chatId: string;
+}): Promise<QuestionnaireClientState | null> {
+  try {
+    const [msg] = await db
+      .select({ stateSnapshot: message.stateSnapshot })
+      .from(message)
+      .where(
+        and(
+          eq(message.chatId, chatId),
+          // Only get messages with state snapshots
+          // Note: This requires a proper SQL check, but drizzle doesn't support IS NOT NULL easily
+          // We'll filter in the application layer
+        )
+      )
+      .orderBy(desc(message.createdAt))
+      .limit(1);
+
+    return msg?.stateSnapshot ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get last state snapshot"
+    );
   }
 }
 
