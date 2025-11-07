@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    ppr: true,
-  },
+  cacheComponents: true, // Partial Prerendering (replaces experimental.ppr)
   images: {
     remotePatterns: [
       {
