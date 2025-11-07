@@ -107,10 +107,9 @@ export interface Q15Answer {
 }
 
 export interface Q16Answer {
-  genitourinary: boolean;
+  everDiagnosed?: boolean;
+  diagnosedLast2Years?: boolean;
   followUpNormal?: boolean;
-  abnormalPap?: boolean; // female only
-  elevatedPSA?: boolean; // male only
 }
 
 export interface Q17Answer {
