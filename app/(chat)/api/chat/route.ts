@@ -119,7 +119,7 @@ export async function POST(request: Request) {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
-      selectedVisibilityType: VisibilityType;
+      selectedVisibilityType?: VisibilityType;
     } = requestBody;
 
     const session = await auth();
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
         id,
         userId: session.user.id,
         title,
-        visibility: selectedVisibilityType,
+        visibility: selectedVisibilityType ?? "private",
       });
       // New chat - no need to fetch messages, it's empty
     }

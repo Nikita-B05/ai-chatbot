@@ -108,7 +108,7 @@
 
 
 				When was your last follow-up?
-					< 2 years ago CHECK If BMI < 40 Signature, If current age < 40 or smoker Deferred+, OTHERWISE Day1+
+					< 2 years ago CHECK If BMI < 40 Signature, If current age < 40 or smoker Deferred+, OTHERWISE Signature
 					CHECK If current age <40 or smoker Guaranteed+
 					> 2 years ago CHECK If BMI < 40 Deferred+ (If current age < 40 or smoker Guaranteed+), OTHERWISE Guaranteed+
 12. [Female] Have you ever been diagnosed with gestational diabetes (within the last 2 years), diabetes or pre-diabetes? (diabetes) If NO > Day1

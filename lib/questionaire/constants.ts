@@ -10,10 +10,10 @@ export const PLAN_TIERS: PlanTier[] = [
 ];
 
 export const PLAN_PRIORITY: Record<PlanTier, number> = {
-  DECLINE: 0,
-  Day1: 1,
+  "DECLINE": 0,
+  "Day1": 1,
   "Day1+": 2,
-  Signature: 3,
+  "Signature": 3,
   "Deferred+": 4,
   "Guaranteed+": 5,
 };
@@ -27,9 +27,9 @@ export const MANDATORY_QUESTIONS = [
 
 // Question dependencies - questions that require other questions to be answered first
 export const QUESTION_DEPENDENCIES: Record<string, string[]> = {
-  q4: ["q18"], // Q4 (alcohol) - "CHECK If YES to Q18 for Severe Anxiety" (line 36)
-  q6: ["q18", "q4"], // Q6 (illicit drugs) - "CHECK If YES to Q18 OR IF Q4" (lines 56, 57, 63)
-  q7: ["q4", "q6"], // Q7 (treatment) - "CHECK If YES to Q4" and "CHECK If YES to Q6" (lines 68, 74)
+  q4: ["q18"], // Q4 (alcohol) - "CHECK If YES to Q18 AND 21-28 drinks/week for (Severe Anxiety OR Moderate Anxiety)" (line 36)
+  q6: ["q18", "q4"], // Q6 (illicit drugs) - "CHECK If YES to (1-2 years OR 2-5 years OR 5-10 years) and to Q18 OR IF Q4" (lines 56, 57, 63)
+  q7: ["q4", "q6"], // Q7 (treatment) - "CHECK Q4 If YES AND YES to Treatment for alcohol consumption only" and "CHECK Q6 If YES AND NO to Treatment for alcohol consumption only" (lines 68, 74)
   q8: ["q18"], // Q8 (DUI) - "CHECK combination rules in Q18" (line 83)
   q11: ["q2"], // Q11 (heart disease) - "CHECK If BMI >= 44.0" requires BMI from Q2 (line 104)
   q12: ["q11", "q2"], // Q12 (diabetes) - "CHECK If YES TO Q11 (CAD)" and BMI checks (lines 116, 121, 126, 132, 142, 146)
@@ -46,12 +46,11 @@ export const QUESTION_DEPENDENCIES: Record<string, string[]> = {
 // Decline reasons mapped to question IDs
 export const DECLINE_REASONS = {
   Q6_RECENT_USE: "Recent illicit drug use (< 1 year)",
-  Q6_WITH_MENTAL_HEALTH: "Illicit drug use with mental health conditions",
-  Q6_WITH_ALCOHOL:
-    "Illicit drug use with high alcohol consumption (21+ drinks/week)",
-  Q7_ALCOHOL_TREATMENT: "Alcohol treatment with current alcohol use",
+  Q6_WITH_MENTAL_HEALTH: "Illicit drug use with mental health conditions (1-2 years)",
+  Q6_WITH_ALCOHOL:"Illicit drug use with high alcohol consumption (21+ drinks/week) (1-2 years)",
+  Q7_ALCOHOL_TREATMENT: "Alcohol treatment with current alcohol use ",
   Q7_DRUG_TREATMENT: "Drug treatment with recent drug use",
-  Q9_MULTIPLE_CHARGES: "Multiple criminal charges (2 or more)",
+  Q9_MULTIPLE_CHARGES: "Multiple criminal charges (2 or more times) or charges/sentencing currently pending",
   Q9_RECENT_INCARCERATION: "Recent incarceration (6+ months)",
   Q11_BMI_HIGH: "Heart disease with BMI >= 44.0",
 } as const;
@@ -63,11 +62,7 @@ export const BMI_RANGES = {
   MODERATE: { min: 38.1, max: 40.0, plan: "Day1+" as PlanTier },
   HIGH: { min: 40.1, max: 43.0, plan: "Signature" as PlanTier },
   VERY_HIGH: { min: 43.1, max: 44.0, plan: "Deferred+" as PlanTier },
-  EXTREME: {
-    min: 44.1,
-    max: Number.POSITIVE_INFINITY,
-    plan: "Guaranteed+" as PlanTier,
-  },
+  EXTREME: { min: 44.1, max: Number.POSITIVE_INFINITY,  plan: "Guaranteed+" as PlanTier },
 } as const;
 
 // Age thresholds
@@ -118,7 +113,7 @@ export const YEARS_THRESHOLDS = {
   },
   Q9_SENTENCE: {
     GUARANTEED_PLUS: 3, // < 3 years
-    DEFERRED_PLUS: 5, // 4-5 years
+    DEFERRED_PLUS: 5, // 3-5 years
     SIGNATURE: 5, // > 5 years
   },
   Q11_DIAGNOSIS: {
@@ -214,6 +209,7 @@ export const HIGH_RISK_OCCUPATIONS = [
   "politician",
   "journalist travelling in high-risk countries",
   "military personnel deployed",
+  "military personnel under order to deploy in the next 12 months",
   "stunt work",
   "exotic dancer",
   "adult film industry",
@@ -221,18 +217,15 @@ export const HIGH_RISK_OCCUPATIONS = [
 
 // Moderate-risk occupations for Q3
 export const MODERATE_RISK_OCCUPATIONS = [
-  "working at heights over 30 ft",
-  "working at heights over 10m",
+  "working at heights over 30 ft (10m)",
   "offshore fishing",
   "underground mining",
   "offshore mining",
   "logging",
-  "forestry",
-  "log hauler",
+  "forestry (excluding log hauler)",
   "hydro lineman",
   "power lineman",
-  "pilot",
-  "scheduled commercial airline",
+  "pilot (except on a scheduled commercial airline)",
 ] as const;
 
 // Experimental drugs (Q6)
@@ -256,11 +249,11 @@ export const ILLICIT_DRUGS = [
   "speed",
   "lsd",
   "dmt",
-  "morphine",
-  "demerol",
-  "codein",
-  "codeine",
-  "fentanyl",
+  "morphine", // not prescribed by a doctor or physician
+  "demerol", // not prescribed by a doctor or physician
+  "codein", // not prescribed by a doctor or physician  
+  "codeine", // not prescribed by a doctor or physician
+  "fentanyl", // not prescribed by a doctor or physician
 ] as const;
 
 // Standard alcohol drink definition
@@ -272,14 +265,13 @@ export const STANDARD_ALCOHOL_DRINK = {
 
 // Extreme sports categories (Q23)
 export const EXTREME_SPORTS_HIGHEST_RISK = [
-  "free solo mountain climbing",
+  "free solo mountain climbing ",
   "international peaks",
   "peaks > 6000 meters",
   ">= YDS 5.11",
   "NCCS grade VI",
-  "kayak jumping",
-  "motor racing with maximum speed above 240 km/h",
-  "motor racing with maximum speed above 150 mph",
+  "base jumping",
+  "motor racing with maximum speed above 240 km/h (150 mp/h)",
   "solo scuba diving",
   "night scuba diving",
   "cave scuba diving",
@@ -292,38 +284,27 @@ export const EXTREME_SPORTS_MODERATE_RISK = [
   "mountain climbing above 4000 meters",
   "YDS 5.8",
   "NCCS grade V",
-  "bungee paragliding",
+  "bungee jumping",
   "hang gliding",
+  "paragliding",
   "scuba diving above 45 meters",
 ] as const;
 
 export const EXTREME_SPORTS_LOW_RISK = [
-  "mountain climbing",
-  "ice climbing",
-  "paragliding",
-  "parasailing",
-  "hang gliding",
   "skydiving",
-  "scuba diving",
-  "casual vacation resort",
-  "bungee jumping",
   "heli-skiing",
   "backcountry skiing",
   "backcountry snowmobiling",
-  "aviation",
-  "passenger",
-  "pilot on scheduled flights",
+  "aviation (excluding passenger or pilot on scheduled flights)",
   "motor racing",
   "kitesurfing",
 ] as const;
 
 // Hereditary conditions (Q24)
 export const HEREDITARY_CONDITIONS = [
-  "amyotrophic lateral sclerosis",
-  "ALS",
+  "amyotrophic lateral sclerosis (ALS)",
   "cardiomyopathy",
-  "hereditary non-polyposis colon cancer",
-  "HNPCC",
+  "hereditary non-polyposis colon cancer (HNPCC)",
   "huntington's disease",
   "lynch syndrome",
   "muscular dystrophy",
