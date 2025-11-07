@@ -27,11 +27,20 @@ export const MANDATORY_QUESTIONS = [
 
 // Question dependencies - questions that require other questions to be answered first
 export const QUESTION_DEPENDENCIES: Record<string, string[]> = {
-  q4: ["q18"], // Q4 (alcohol) depends on Q18 (mental health)
-  q6: ["q18", "q4"], // Q6 (illicit drugs) depends on Q18 and Q4
-  q7: ["q4", "q6"], // Q7 (treatment) depends on Q4 and Q6
-  q11: ["q2"], // Q11 (heart disease) depends on BMI from Q2
-  q12: ["q11", "q2"], // Q12 (diabetes) depends on Q11 and BMI
+  q4: ["q18"], // Q4 (alcohol) - "CHECK If YES to Q18 for Severe Anxiety" (line 36)
+  q6: ["q18", "q4"], // Q6 (illicit drugs) - "CHECK If YES to Q18 OR IF Q4" (lines 56, 57, 63)
+  q7: ["q4", "q6"], // Q7 (treatment) - "CHECK If YES to Q4" and "CHECK If YES to Q6" (lines 68, 74)
+  q8: ["q18"], // Q8 (DUI) - "CHECK combination rules in Q18" (line 83)
+  q11: ["q2"], // Q11 (heart disease) - "CHECK If BMI >= 44.0" requires BMI from Q2 (line 104)
+  q12: ["q11", "q2"], // Q12 (diabetes) - "CHECK If YES TO Q11 (CAD)" and BMI checks (lines 116, 121, 126, 132, 142, 146)
+  q15: ["q11"], // Q15 (respiratory) - "CHECK If YES to Q11 (CAD)" (lines 160, 168, 169)
+  q17: ["q18"], // Q17 (neurological) - "CHECK If YES TO Q18" (lines 188, 190, 193)
+  // Q18 depends on Q4, Q6, Q8 for evaluation (checks "alcohol quantity 21 and over" from Q4)
+  // but Q18 can be asked independently - rules will re-evaluate after dependencies are answered
+  q18: ["q6", "q8", "q4"], // Q18 (mental health) - checks Q6, Q8, and "alcohol quantity 21 and over" from Q4 (lines 201, 209)
+  q19: ["q2"], // Q19 (digestive) - "CHECK If BMI < 18" requires BMI from Q2 (line 214)
+  q21: ["q18"], // Q21 (neuromuscular) - "CHECK if >Signature for #18" (line 225)
+  q22: ["q12", "q16", "q2"], // Q22 (arthritis) - "if YES to #12, #16, or If BMI >43" (line 231)
 };
 
 // Decline reasons mapped to question IDs
@@ -45,8 +54,6 @@ export const DECLINE_REASONS = {
   Q9_MULTIPLE_CHARGES: "Multiple criminal charges (2 or more)",
   Q9_RECENT_INCARCERATION: "Recent incarceration (6+ months)",
   Q11_BMI_HIGH: "Heart disease with BMI >= 44.0",
-  Q13_CANCER: "History of cancer within last 10 years",
-  Q14_IMMUNE_DISORDER: "Immune system disorder",
   Q21_MS_PROGRESSIVE:
     "Progressive multiple sclerosis with loss of bowel/bladder function",
   Q21_AMBULATORY_ISSUES: "Neuromuscular condition with ambulatory issues",

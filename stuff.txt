@@ -206,8 +206,6 @@
 	If NO > [Male] Have you ever experienced moderate anxiety, moderate depression, or a personality disorder?
 		[Female] Have you ever experienced moderate anxiety, moderate depression (including postpartum depression), or a personality disorder? POP-UP Moderate anxiety or moderate depression: Multiple episodes with none within the last 24 months, time off work or school less than 2 weeks, and with NO previous history of hospitalization.
 			If NO > Day1
-
-
 		If YES > CHECK if Question 6 answered Yes but no to #8 or alcohol quantity 21 and over - combination rule in question 6 applies. If Question 8 answered yes or alcohol quantity 21 and over > Deferred +
 			If NO > Day1
 			If YES > Day1+
@@ -251,6 +249,4 @@
 25. Within the next 12 months, do you plan to travel to a high-risk country or conflict regions or regions at war (View list of Canada website for the current list of countries classified as Avoid all travel or Avoid non-essential travel: POP-UP: travel.gc.ca/travelling/advisories) If YES > Guaranteed+
 	If NO > Within the next 12 months, do you intend to reside outside of Canada for at least six consecutive months?
 		If NO > Day1
-
-
 		If YES > Day1+
