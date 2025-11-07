@@ -1,0 +1,256 @@
+1.In the past 12 months, excluding large cigars (12 or less), have you used tobacco in any form (not limited to small cigars, cigarillos, electronic cigarettes or vaping, nicotine products or nicotine substitutes such as patch or gum)?
+	If YES > SMOKER RATES
+	If NO > NON-SMOKER RATES
+2.Provide your height and weight (calculate BMI)
+	[Female only] Are you currently pregnant? YES/NO
+		<= 17.0 Guaranteed+ (GO TO Q3)
+		17.1-38.0 Day1 (GO TO 2B)
+		38.1-40.0 Day1+ (GO TO 2B)
+		40.1-43.0 Signature (GO TO 2B)
+		43.1-44.0 Deferred+ GO TO NEXT QUESTION
+		>= 44.1 Guaranteed+ GO TO NEXT QUESTION
+	[B]
+	[MALE] Excluding intentional weight loss (such as diet or exercise), have you lost more than 10% of body weight in the past 12 months? If YES > Deferred+
+		If NO > Rules based on BMI
+
+	[FEMALE]
+	[If YES to Pregnancy] Provide your pre-pregnancy weight (rules based on this new calculated BMI)
+	[If NO to Pregnancy] Have you given birth in the last 6 months?
+		If YES > Provide your pre-pregnancy weight (rules based on this new calculated BMI)
+		If NO > Excluding intentional weight loss (such as diet or exercise), have you lost more than 10% of body weight in the past 12 months? If YES > Deferred+
+			If NO > rules based on BMI
+3.Are you currently working?
+	If YES > Does your duties involve any of the following: Commercial diving (such as deep-sea construction or salvage, demolition diver, marine harvesting, oil rig, cable or pipe laying), diplomat, politician, journalist travelling in high-risk countries, military personnel deployed or under order to deploy in the next 12 months, stunt work, exotic dancer or in the adult film industry?
+		If YES > Deferred+
+		If NO > Do your duties involve any of the following: Working at heights over 30 ft (10m), offshore fishing, underground or offshore mining, logging, or forestry (excluding log hauler), hydro/power lineman or as a pilot (except on a scheduled commercial airline)?
+			If YES > Signature
+			If NO > Day1
+	If NO > Are you currently receiving care in a hospital, nursing facility, or specialized center for individuals with limited mobility or autonomy, or do you require assistance with daily activities such as being bedridden or using a wheelchair?
+		If YES > Guaranteed+
+		If NO > Day1
+4.Do you consume alcohol?
+	If NO > Day1
+	If YES > How many standard alcohol drinks do you consume on average per week?
+	POP UP: One standard alcohol drink is comparable to one beer bottle/can (12 oz) or one glass of wine (5 oz) or one shot glass of liquor (1.5 oz) < 14 Day1
+		14-20 Day1+
+		21-28 CHECK If YES to Q18 for Severe Anxiety Guaranteed+ OR If Yes to Q18 for Moderate Anxiety Deferred+ OTHERWISE : Signature >28 Guaranteed+
+5.In the last 12 months, have you used marijuana, hashish or cannabis in any form (inhalation, ingestion, patches, or other)? If NO > Day1
+	If YES > Do you mix marijuana, cannabis or hashish with tobacco?
+		If NO > NON-SMOKER RATES
+		If YES > SMOKER RATES if not already per #1 (same rules below regardless)
+	Confirm frequency per week?
+		15+ > Guaranteed+
+		8-14
+			Age -/25 > Deferred+
+			Age +/26 > Signature
+		4 to 7
+			Age -/25 > Signature
+			Age +/26 > Day1+
+		1 to 4
+			Age -/25 > Day1+
+			Age +/26 > Day1
+6.Excluding marijuana, cannabis or hashish, have you ever used any other illicit drugs such as Amphetamines, Anabolic Steroids, Barbiturates, Cocaine, Ecstasy, Hallucinogens, Heroin, Methadone, Opium, Speed, LSD, DMT, or any of the following not prescribed by a doctor or physician: Morphine, Demerol, Codein, or Fentanyl?
+	If NO > Day1
+	If YES > Date of last use (number of years)
+		< 1 years DECLINE
+		1-2 years > CHECK If YES to Q18 OR IF Q4 (ETOH) qtty 21 OR > > DECLINE, OTHERWISE Guaranteed+
+		2-5 years > CHECK If YES to Q18 OR IF Q4 (ETOH) qtty 21 OR > Deferred+, OTHERWISE Signature
+		5 - 10 years >
+			Did you only use Ecstasy, Speed or Hallucinogens?
+				If YES > How many times in total?
+					1 use (experimental only) > Day1
+					+/2 uses > Day1+
+				If NO > CHECK If YES to Q18 OR IF Q4 (ETOH) qtty 21 OR > Signature, OTHERWISE Day1+
+		10 years > Day1
+7.Have you ever received treatment (including the participation in a support group), or have you ever been advised to reduce your consumption or seek treatment regarding the use of alcohol or any drug?
+	If NO > Day1
+	If YES > Did you receive treatment for alcohol consumption only?
+		If YES > CHECK If YES to Q4 (ETOH) DECLINE, Otherwise When did you last receive treatment (number years)?
+			< 1 year > Guaranteed+
+			1-2 years > Deferred+
+			2-5 years > Signature
+			5 - 10 years > Day1+
+			10 years > Day1
+		If NO > CHECK If YES to Q6 (DRUG) DECLINE, Otherwise When did you last receive treatment (number years)?
+			< 1 year > Guaranteed+
+			1-2 years > Deferred+
+			2-5 years > Signature
+			5 - 10 years > Day1+
+			10 years > Day1
+8.In the last 3 years, have you been charged, convicted, or do you have charges pending for driving with a blood alcohol above the legal limit, under the influence, or impaired driving (DUI/DWI)?
+	If NO > Day1
+	If YES > CHECK If age >71 > Guaranteed+
+		CHECK combination rules in Q18 OTHERWISE : Have you had 2 or more DUIs to date?
+			If YES > Guaranteed+
+			If NO > Day1+
+9. Excluding DUI/DWI, in the last 5 years have you been convicted or incarcerated of any criminal offence or have charges or sentencing currently pending? If NO > Day1
+	If YES > Have you ever been charged/convicted 2 or more times , or have charges or sentencing currently pending ?
+		If YES > DECLINE
+		If NO > If incarcerated, was it for 6 months or more?
+			If YES > DECLINE
+			If NO > When did you complete your sentence, parole or probation (number of years)?
+				< 3 years > Guaranteed+
+				4 -5years > Deferred+
+				> 5 years > Signature
+10. Excluding annual tests, routine pregnancy or childbirth-related follow-ups with normal results, common cold, flu or seasonal allergies, strains or sprains: [A] Do you have any physical or mental symptoms for which you have not yet consulted a health professional?
+	If NO > Day1
+	If YES > Guaranteed+
+
+	[B] Have you been advised of an abnormal test result, or to have treatment or investigations which have not yet started or been completed, or are you awaiting results of any medical investigations?
+	If NO > Day1
+	If YES > Guaranteed+
+11. Excluding treated and controlled high blood pressure and/or cholesterol have you had or been told you have, been investigated, been treated, taken medication, or been prescribed medication, had surgery or a procedure for: Heart disease, heart attack, angina, heart murmur, abnormal heart rhythm, aneurysm, blood clots, cerebrovascular disease (stroke or mini-stroke such as TIA), or any other disease of the heart or the blood vessels (angioplasty, atherosclerosis, heart bypass, heart stent, peripheral vascular disease)?
+	If NO > Day1
+	If YES > CHECK If BMI >= 44.0 > DECLINE OTHERWISE : Are you currently free of symptoms, stable with regular follow-up with no pending surgery? If NO > Deferred+ CHECK if smoker Guaranteed+
+		If YES > When were you diagnosed?
+			<= 3 years Deferred+ CHECK If current age < 40 or smoker Guaranteed+
+			>3 years
+
+
+				When was your last follow-up?
+					< 2 years ago CHECK If BMI < 40 Signature, If current age < 40 or smoker Deferred+, OTHERWISE Day1+
+					CHECK If current age <40 or smoker Guaranteed+
+					> 2 years ago CHECK If BMI < 40 Deferred+ (If current age < 40 or smoker Guaranteed+), OTHERWISE Guaranteed+
+12. [Female] Have you ever been diagnosed with gestational diabetes (within the last 2 years), diabetes or pre-diabetes? (diabetes) If NO > Day1
+	If YES > Were you diagnosed with Diabetes type 1? (diabetes1)
+		If YES > CHECK If BMI >40 OR YES TO CAD Q11 (CAD) > Guaranteed+, OTHERWISE Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions or nephropathy?
+			If YES > Guaranteed+ GO TO NEXT QUESTION
+			If NO > Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? If YES > Deferred+
+				If NO > Guaranteed+
+		If NO > CHECK If YES TO PREGNANCY > Have you been diagnosed with Gestational Diabetes only?
+				If YES > CHECK If BMI >40 OR YES TO CAD Q11 (CAD) > Guaranteed+ GO TO NEXT QUESTION
+						OTHERWISE > Is your Gestational Diabetes currently under good control with HbA1c or A1C result of 7.5% or less than or equal to 7%? (diabetes2)
+							If YES > Signature
+							If NO > Deferred+
+				If NO > Are you currently taking or have you been prescribed any medication to treat your diabetes? (diabetes2) If YES >
+						CHECK If age 18 to 24 > OR YES TO Q11 (CAD) Deferred+ GO TO NEXT QUESTION
+						CHECK BMI >40 > Guaranteed+ GO TO NEXT QUESTION
+						OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? (diabetes3)
+							If YES > CHECK BMI 38-39.0 >Deferred+, 36-37.9 > Signature, 18-36 > Day1+
+								If NO > Deferred+
+							If NO > Day1+
+						CHECK If NO TO PREGNANCY > Are you currently taking or have you been prescribed any medication to treat your diabetes? (diabetes2) If YES > CHECK If age 18 to 24 > OR YES TO Q11 (CAD) Deferred+ GO TO NEXT QUESTION
+									CHECK BMI >40 > Guaranteed+ GO TO NEXT QUESTION
+									OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? (diabetes3)
+										If YES > CHECK BMI 38-39.0 >Deferred+, 36-37.9 > Signature, 18-36 > Day1+
+											If NO > Deferred+
+										If NO > Day1+
+
+	[Male] Have you ever been diagnosed with diabetes or pre-diabetes? (diabetes6)
+		If NO > Day1
+		If YES > Were you diagnosed with Diabetes type 1? (diabetes7)
+			If YES > CHECK BMI > 40 OR YES TO CAD Q11 Guaranteed+ OTHERWISE: Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions, or nephropathy?
+				If YES > Guaranteed+ GO TO NEXT QUESTION
+				If NO > Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? If YES > Deferred+
+						If NO > Guaranteed+
+			If NO > Are you currently taking or have you been prescribed any medication to treat your diabetes? (diabetes2) If YES > CHECK If age 18 to 24 > OR YES TO Q11 (CAD) Deferred+ GO TO NEXT QUESTION
+					CHECK BMI >40 > Guaranteed+ GO TO NEXT QUESTION
+					OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? (diabetes3)
+						If YES > CHECK BMI 38-39.0 >Deferred+, 36-37.9 > Signature, 18-36 > Day1+
+							If NO > Deferred+
+						If NO > Day1+
+13. Within the last 10 years, have you been diagnosed with, shown symptoms, received treatment for or recommended therapy or medication for any of the following disorders: [Excluding Basal Cell Carcinoma or any other benign cysts/polyps] Cancer, cyst(s), tumor(s), Hodgkin's disease, Lymphoma, Leukemia, Melanoma, or any other abnormal growth or malignant disease?
+	If NO > Day1
+	If YES > Deferred+
+14. Have you ever been diagnosed with, shown symptoms, received treatment for or recommended therapy or medication for any disease of the immune system, lupus, scleroderma, AIDS/HIV, or any disease or disorder of the immune system?
+	If NO > Day1
+	If YES > Guaranteed+
+15. Have you ever been diagnosed with shortness of breath, emphysema, Chronic Obstructive Pulmonary Disease (COPD), or cystic fibrosis? If YES > Have you been on oxygen therapy in the last 2 years?
+		If YES > Guaranteed+ GO TO NEXT QUESTION
+		If NO > Deferred+ CHECK If YES to Q11 (CAD) or SMOKER Guaranteed+ GO TO NEXT QUESTION
+	If NO > Have you been diagnosed, treated, or been prescribed treatment for sleep apnea? 1
+		If NO > Have you ever been diagnosed with asthma or chronic bronchitis? 5
+			If NO > Day1
+			If YES > Have you been prescribed steroids, take 2 or more daily inhalers, admitted or hospitalized (within the last 12 hours) to control your asthma symptoms within the last 2 years?
+				If NO > Day1+ 9
+				If YES > Signature CHECK if SMOKER Deferred+ 8
+		If YES > Do you use a treatment everyday such as a BIPAP, CPAP, or any other machine or oral appliance?
+			If NO > Signature CHECK If YES to Q11 (CAD) > Deferred+ 11
+			If YES > Day1+ CHECK If YES to Q11 (CAD) > Signature 10
+16. [MALE] Have you ever been diagnosed with a prostate disorder or elevated Prostate Specific Antigen (PSA), disorder of the testes, nephritis, nephropathy, kidney disease, polycystic kidney disease or any other genitourinary disorder, (excluding kidney stone in only one kidney or non-obstructive kidney stone or any infection treated with antibiotics)?
+	If YES > Deferred+
+	If NO > In the last 2 years, have you been diagnosed with or told you had sugar or blood in the urine, elevated Prostate Specific Antigen (PSA) due to an infection treated with antibiotics?
+		If NO > Day1
+		If YES > Have you had a normal follow-up in the last 12 months, with no further tests or consult recommended?
+			If YES > Day1+
+			If NO > Deferred+
+
+	[FEMALE]
+	Have you ever been diagnosed with a disorder of the ovaries, uterus or genitals (excluding hysterectomy), nephritis, nephropathy, kidney disease, polycystic kidney disease or any other genitourinary disorder (excluding kidney stone in only one kidney, non-obstructive kidney stone or any infection treated with antibiotics)?
+		If YES > Deferred+
+		If NO > In the last 2 years, have you been diagnosed with or told you had sugar or blood in the urine (excluding menstrual related), or any abnormal pap smear? If NO > Day1
+			If YES > Have you had a normal follow-up in the last 12 months with no further tests or consult recommended?
+				If YES > Day1+
+				If NO > Deferred+
+17. Have you ever been diagnosed with Alzheimer, seizures, motor neuron disease, dementia, autism, cerebral palsy, motor neuron syndrome, memory loss, Parkinson's disease or other congenital developmental disorder?
+	If NO > Day1
+	If YES > Were you diagnosed with only seizure or epilepsy disorder?
+		If NO > CHECK If YES TO Q18 Guaranteed+, OTHERWISE: Deferred+
+		If YES > How many seizures have you had in the last 12 months?
+			0 > CHECK If YES TO Q18 Signature+, OTHERWISE: Day1+
+			1-3 > Are you currently prescribed more than 1 medication?
+				If NO> Signature
+				If YES > CHECK If YES TO Q18 Guaranteed+, OTHERWISE: Deferred+
+			4-6 > Are you currently prescribed more than 1 medication?
+				If NO> Deferred+
+				If YES > Guaranteed+
+			7/+ > Guaranteed+
+18. Have you ever been diagnosed with a mental health disorder such as severe anxiety, severe depression, bipolar, epilepsy, schizophrenia, psychosis, or attempted suicide?
+
+	POP-UP: Severe anxiety or severe depression: Multiple episodes, last episode within the last 24 months, time off work or school less than 2 weeks, or with a history of hospitalization.
+	CHECK If Question 6 answered Yes but no to #8 or alcohol quantity 21 and over - combination rule in question 6 applies. If Question 8 answered yes or alcohol quantity 21 and over > Guaranteed+
+	OTHERWISE:
+	If YES > Are you currently prescribed 3 or more medications to control your symptoms?
+		If YES > Deferred +
+		If NO > Signature
+	If NO > [Male] Have you ever experienced moderate anxiety, moderate depression, or a personality disorder?
+		[Female] Have you ever experienced moderate anxiety, moderate depression (including postpartum depression), or a personality disorder? POP-UP Moderate anxiety or moderate depression: Multiple episodes with none within the last 24 months, time off work or school less than 2 weeks, and with NO previous history of hospitalization.
+			If NO > Day1
+
+
+		If YES > CHECK if Question 6 answered Yes but no to #8 or alcohol quantity 21 and over - combination rule in question 6 applies. If Question 8 answered yes or alcohol quantity 21 and over > Deferred +
+			If NO > Day1
+			If YES > Day1+
+19. Have you ever been diagnosed with Crohn's disease, ulcerative colitis, hepatitis (excluding hepatitis A), pancreatitis, pancreatic cancer, intestinal bleeding, or other disorders of the stomach, intestine (excluding irritable bowel syndrome - IBS), liver, or pancreas?
+	If NO > Day1
+	If YES > CHECK If BMI < 18 Guaranteed+, OTHERWISE Were you diagnosed with diverticulitis, Crohn's disease, or ulcerative colitis more than 12 months ago? If NO > Deferred+
+		If YES > Have you had a routine medical follow-up or surveillance in the past 2 years?
+			If NO > Deferred+
+			If yes > Have you had 2 surgeries or more within the last 5 years, missed any time off work/school in the last 2 years, been hospitalized within the last 2 years, or had a flare within the last 12 months?
+				If YES > Signature
+				If NO > CHECK If BMI 18-20 Signature, OTHERWISE Day1+
+20. Excluding controlled hypothyroidism/hyperthyroidism, have you ever been diagnosed with, shown symptoms, received treatment for, or recommended therapy or medication for any of the following disorders: Adrenal, parathyroid, pituitary, hormone, metabolic or any other endocrine, gland, or metabolic disorders?
+	If NO > Day1
+	If YES > Signature3
+21. Have you ever been diagnosed with multiple sclerosis, muscular dystrophy, numbness or weakness of an arm or leg, or paralysis? If NO > Day1
+	If YES > In the last 2 years, were you diagnosed with multiple sclerosis, progressive pattern with loss of bowel, or bladder function? If YES > Guaranteed+
+		If NO > AGE CHECK If Age >40 or if >Signature for #18 > Guaranteed+ OTHERWISE: Do you currently have ambulatory or disability issues, or have you had more than 2 attacks in the 12 months?
+			(POP UP: Ambulatory issues include being unable to walk less than 200 meters or 1 flight of stairs per day, or assistance devices such as a cane, crutches or brace, wheelchair)
+				If YES > Deferred+
+				If NO > Signature
+22. Have you ever been diagnosed with rheumatoid arthritis, psoriatic arthritis, or spinal disc disease?
+	If NO > Day1
+	If YES > if YES to #12, #16, or If BMI >43 -> Guaranteed+ OTHERWISE: Have you ever experienced daily symptoms such as loss of movement or disability, or have you ever undergone surgery to treat your condition?
+		If YES, Signature
+		If NO, Are you currently on any prescribed daily medication to control your symptoms?
+			If YES, CHECK If Age < 40 Signature, OTHERWISE Day1+
+			If NO, Day1
+23. In the last 2 years or in the next 12 months, have you participated in or do you intend to participate in any of the following high-risk activities or sports: mountain climbing, ice climbing, paragliding, parasailing, hang gliding, skydiving, scuba diving (excluding casual vacation resort), bungee jumping, heli-skiing, backcountry skiing, backcountry snowmobiling, aviation (excluding passenger or pilot on scheduled flights), motor racing, or kitesurfing? If NO > Day1
+	If YES > Any free solo mountain climbing, international peaks or peaks > 6,000 meters, >= YDS 5.11, NCCS grade VI, kayak jumping, motor racing with maximum speed above 240 km/h (150 mp/h), any solo/night/cave, or wreck scuba diving?
+		If YES > Guaranteed+
+		If NO > Any ice or glacier climbing, mountain climbing above 4000 meters, YDS 5.8 or NCCS grade V, bungee paragliding, hang gliding, or scuba diving above 45 meters?
+			If YES > Signature
+			If NO > Day1+
+24. To your knowledge, have any of your immediate family member(s) (father, mother, brother or sister), ever been diagnosed before the age of 65 with Amyotrophic Lateral Sclerosis, Cardiomyopathy, Hereditary non-polyposis colon cancer, Huntington's disease, Lynch syndrome, Huntington's disease, Muscular dystrophy, or Polycystic kidney disease?
+	If YES > Deferred+
+	If NO > Before age 60, have 2 or more of your immediate family members (mother, father, brother or sister) been diagnosed with cancer, stroke, heart attack, angina, bypass, angioplasty, multiple sclerosis, motor neuron disease, Alzheimer's disease or dementia?
+		If YES > Has 1 or more immediate family members been diagnosed before the age of 50?
+			If YES > Signature
+			If NO > Day1+
+		If NO > Day1
+25. Within the next 12 months, do you plan to travel to a high-risk country or conflict regions or regions at war (View list of Canada website for the current list of countries classified as Avoid all travel or Avoid non-essential travel: POP-UP: travel.gc.ca/travelling/advisories) If YES > Guaranteed+
+	If NO > Within the next 12 months, do you intend to reside outside of Canada for at least six consecutive months?
+		If NO > Day1
+
+
+		If YES > Day1+
