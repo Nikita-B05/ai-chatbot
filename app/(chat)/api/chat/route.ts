@@ -2,13 +2,12 @@ import { geolocation } from "@vercel/functions";
 import {
   convertToModelMessages,
   createUIMessageStream,
+  generateObject,
   JsonToSseTransformStream,
   smoothStream,
   stepCountIs,
   streamText,
-  generateObject,
 } from "ai";
-import { z } from "zod";
 import { unstable_cache as cache } from "next/cache";
 import { after } from "next/server";
 import {
@@ -18,6 +17,7 @@ import {
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
+import { z } from "zod";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
@@ -41,21 +41,25 @@ import {
   getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
-  saveMessageWithStateSnapshot,
   saveMessages,
+  saveMessageWithStateSnapshot,
   updateChatLastContextById,
   updateChatQuestionnaireState,
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
-import { checkChatRateLimit } from "@/lib/rate-limit";
-import { createInitialState, calculateBMI } from "@/lib/questionaire/state";
 import { getAvailableQuestionsForLLM } from "@/lib/questionaire/router";
+import { calculateBMI, createInitialState } from "@/lib/questionaire/state";
 import { updateQuestionnaireState } from "@/lib/questionaire/tool";
 import type { QuestionnaireClientState } from "@/lib/questionaire/types";
+import { checkChatRateLimit } from "@/lib/rate-limit";
 import type { ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { convertToUIMessages, generateUUID, getTextFromMessage } from "@/lib/utils";
+import {
+  convertToUIMessages,
+  generateUUID,
+  getTextFromMessage,
+} from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -131,7 +135,9 @@ export async function POST(request: Request) {
     // Check per-minute rate limit (30 requests/minute)
     const rateLimitResult = await checkChatRateLimit(session.user.id);
     if (!rateLimitResult.success) {
-      const resetTime = new Date(rateLimitResult.reset * 1000).toLocaleTimeString();
+      const resetTime = new Date(
+        rateLimitResult.reset * 1000
+      ).toLocaleTimeString();
       return new ChatSDKError(
         "rate_limit:chat",
         `Rate limit exceeded (30 requests/minute). Please try again after ${resetTime}.`
@@ -189,7 +195,7 @@ export async function POST(request: Request) {
     // Only check if not already in questionnaire mode and this is the first or second message
     if (!isQuestionnaireMode && messagesFromDb.length <= 1) {
       const messageText = getTextFromMessage(message);
-      
+
       // Quick keyword check first (faster, no API call)
       const insuranceKeywords = [
         "insurance",
@@ -208,41 +214,74 @@ export async function POST(request: Request) {
       if (hasInsuranceKeyword) {
         try {
           const detectionResult = await generateObject({
-            model: myProvider.languageModel("gemini-2.5-flash-lite"), // Use lightweight model for detection
-            system: "You are a classifier that determines if a user message is about starting an insurance questionnaire or application. Return true if the user wants to apply for insurance, get insurance quotes, complete an insurance questionnaire, or provide health/lifestyle information for insurance purposes. Also extract any demographics mentioned (age, gender, height, weight).",
+            model: myProvider.languageModel("title-model"), // Use lightweight model for detection
+            system:
+              "You are a classifier that determines if a user message is about starting an insurance questionnaire or application. Return true if the user wants to apply for insurance, get insurance quotes, complete an insurance questionnaire, or provide health/lifestyle information for insurance purposes. Also extract any demographics mentioned (age, gender, height, weight).",
             prompt: messageText,
             schema: z.object({
-              isQuestionnaireRequest: z.boolean().describe("Whether this message is requesting to start an insurance questionnaire"),
-              confidence: z.number().min(0).max(1).describe("Confidence level (0-1)"),
-              demographics: z.object({
-                age: z.number().int().positive().optional().describe("Age in years if mentioned"),
-                gender: z.enum(["male", "female"]).optional().describe("Gender if mentioned"),
-                height: z.number().positive().optional().describe("Height in cm if mentioned"),
-                weight: z.number().positive().optional().describe("Weight in kg if mentioned"),
-              }).optional().describe("Demographics extracted from the message"),
+              isQuestionnaireRequest: z
+                .boolean()
+                .describe(
+                  "Whether this message is requesting to start an insurance questionnaire"
+                ),
+              confidence: z
+                .number()
+                .min(0)
+                .max(1)
+                .describe("Confidence level (0-1)"),
+              demographics: z
+                .object({
+                  age: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Age in years if mentioned"),
+                  gender: z
+                    .enum(["male", "female"])
+                    .optional()
+                    .describe("Gender if mentioned"),
+                  height: z
+                    .number()
+                    .positive()
+                    .optional()
+                    .describe("Height in cm if mentioned"),
+                  weight: z
+                    .number()
+                    .positive()
+                    .optional()
+                    .describe("Weight in kg if mentioned"),
+                })
+                .optional()
+                .describe("Demographics extracted from the message"),
             }),
+            maxRetries: 5, // Ensure retries for this call too
           });
 
           // Lower threshold to 0.5 for better detection, or if keyword matched, use 0.3
           const threshold = 0.3; // Lower threshold since we already have keyword match
-          if (detectionResult.object.isQuestionnaireRequest && detectionResult.object.confidence > threshold) {
+          if (
+            detectionResult.object.isQuestionnaireRequest &&
+            detectionResult.object.confidence > threshold
+          ) {
             // Enable questionnaire mode
             const initialState = createInitialState();
-            
+
             // Extract and set demographics if provided
             if (detectionResult.object.demographics) {
-              const { age, gender, height, weight } = detectionResult.object.demographics;
+              const { age, gender, height, weight } =
+                detectionResult.object.demographics;
               if (age) initialState.age = age;
               if (gender) initialState.gender = gender;
               if (height) initialState.height = height;
               if (weight) initialState.weight = weight;
-              
+
               // Calculate BMI if height and weight are both provided
               if (height && weight) {
                 initialState.bmi = calculateBMI(height, weight);
               }
             }
-            
+
             await enableChatQuestionnaireMode({
               chatId: id,
               initialState,
@@ -253,7 +292,10 @@ export async function POST(request: Request) {
         } catch (error) {
           // If detection fails but keyword matched, enable questionnaire mode anyway
           // This ensures we don't miss legitimate requests due to API issues
-          console.warn("Questionnaire detection failed, but keyword matched. Enabling questionnaire mode:", error);
+          console.warn(
+            "Questionnaire detection failed, but keyword matched. Enabling questionnaire mode:",
+            error
+          );
           const initialState = createInitialState();
           await enableChatQuestionnaireMode({
             chatId: id,
@@ -347,11 +389,7 @@ export async function POST(request: Request) {
       ];
     } else {
       systemPromptText = systemPrompt({ selectedChatModel, requestHints });
-      activeTools = [
-        "createDocument",
-        "updateDocument",
-        "requestSuggestions",
-      ];
+      activeTools = ["createDocument", "updateDocument", "requestSuggestions"];
     }
 
     const stream = createUIMessageStream({
@@ -385,6 +423,7 @@ export async function POST(request: Request) {
           experimental_activeTools: activeTools,
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: toolsWithStream,
+          maxRetries: 5, // Ensure retries for all chat calls
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: "stream-text",
@@ -501,13 +540,21 @@ export async function POST(request: Request) {
     //   );
     // }
 
-    const response = new Response(stream.pipeThrough(new JsonToSseTransformStream()));
-    
+    const response = new Response(
+      stream.pipeThrough(new JsonToSseTransformStream())
+    );
+
     // Add rate limit headers
     response.headers.set("X-RateLimit-Limit", "30");
-    response.headers.set("X-RateLimit-Remaining", currentRateLimit.remaining.toString());
-    response.headers.set("X-RateLimit-Reset", currentRateLimit.reset.toString());
-    
+    response.headers.set(
+      "X-RateLimit-Remaining",
+      currentRateLimit.remaining.toString()
+    );
+    response.headers.set(
+      "X-RateLimit-Reset",
+      currentRateLimit.reset.toString()
+    );
+
     return response;
   } catch (error) {
     const vercelId = request.headers.get("x-vercel-id");

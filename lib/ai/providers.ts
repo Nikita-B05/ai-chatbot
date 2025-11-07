@@ -8,8 +8,12 @@ import {
 import { isTestEnvironment } from "../constants";
 
 // Direct Google API client (bypassing Vercel AI Gateway)
+// Use hardcoded API key to ensure all calls go through the same key
+const GOOGLE_API_KEY = process.env.GOOGLE_GENERATIVE_AI_KEY;
+
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_KEY,
+  apiKey: GOOGLE_API_KEY,
+  maxRetries: 5,
 });
 
 export const myProvider = isTestEnvironment
