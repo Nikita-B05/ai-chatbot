@@ -31,6 +31,10 @@
 - Data Persistence
   - [Neon Serverless Postgres](https://vercel.com/marketplace/neon) for saving chat history and user data
   - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
+- Rate Limiting
+  - Redis-based rate limiting (30 requests/minute per user)
+  - Falls back to in-memory storage if Redis is not configured
+  - Uses [Upstash Redis](https://upstash.com/) or any Redis-compatible service
 - [Auth.js](https://authjs.dev)
   - Simple and secure authentication
 
@@ -61,6 +65,28 @@ You will need to use the environment variables [defined in `.env.example`](.env.
 1. Install Vercel CLI: `npm i -g vercel`
 2. Link local instance with Vercel and GitHub accounts (creates `.vercel` directory): `vercel link`
 3. Download your environment variables: `vercel env pull`
+
+### Setting up Redis (Optional but Recommended)
+
+Rate limiting works without Redis (falls back to in-memory), but for production you should set up Redis:
+
+**Option 1: Upstash Redis (Recommended)**
+
+1. Create a free Redis database at [Upstash Console](https://console.upstash.com/)
+2. Copy the Redis URL from your database dashboard
+3. Add to your `.env.local`: `REDIS_URL=redis://default:password@host:port`
+
+**Option 2: Local Redis (Development)**
+
+```bash
+# macOS
+brew install redis && brew services start redis
+
+# Docker
+docker run -d -p 6379:6379 redis:latest
+```
+
+Then add to `.env.local`: `REDIS_URL=redis://localhost:6379`
 
 ```bash
 pnpm install

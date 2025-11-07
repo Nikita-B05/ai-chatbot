@@ -39,6 +39,7 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
+import { checkChatRateLimit } from "@/lib/rate-limit";
 import type { ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
@@ -114,6 +115,19 @@ export async function POST(request: Request) {
       return new ChatSDKError("unauthorized:chat").toResponse();
     }
 
+    // Check per-minute rate limit (30 requests/minute)
+    const rateLimitResult = await checkChatRateLimit(session.user.id);
+    if (!rateLimitResult.success) {
+      const resetTime = new Date(rateLimitResult.reset * 1000).toLocaleTimeString();
+      return new ChatSDKError(
+        "rate_limit:chat",
+        `Rate limit exceeded (30 requests/minute). Please try again after ${resetTime}.`
+      ).toResponse();
+    }
+
+    // Store rate limit result for response headers
+    const currentRateLimit = rateLimitResult;
+
     const userType: UserType = session.user.type;
 
     const messageCount = await getMessageCountByUserId({
@@ -184,15 +198,12 @@ export async function POST(request: Request) {
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools:
-            selectedChatModel === "chat-model-reasoning"
-              ? []
-              : [
-                  "getWeather",
-                  "createDocument",
-                  "updateDocument",
-                  "requestSuggestions",
-                ],
+          experimental_activeTools: [
+            // "getWeather",
+            "createDocument",
+            "updateDocument",
+            "requestSuggestions",
+          ],
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
             getWeather,
@@ -288,7 +299,14 @@ export async function POST(request: Request) {
     //   );
     // }
 
-    return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
+    const response = new Response(stream.pipeThrough(new JsonToSseTransformStream()));
+    
+    // Add rate limit headers
+    response.headers.set("X-RateLimit-Limit", "30");
+    response.headers.set("X-RateLimit-Remaining", currentRateLimit.remaining.toString());
+    response.headers.set("X-RateLimit-Reset", currentRateLimit.reset.toString());
+    
+    return response;
   } catch (error) {
     const vercelId = request.headers.get("x-vercel-id");
 
