@@ -54,9 +54,6 @@ export const DECLINE_REASONS = {
   Q9_MULTIPLE_CHARGES: "Multiple criminal charges (2 or more)",
   Q9_RECENT_INCARCERATION: "Recent incarceration (6+ months)",
   Q11_BMI_HIGH: "Heart disease with BMI >= 44.0",
-  Q21_MS_PROGRESSIVE:
-    "Progressive multiple sclerosis with loss of bowel/bladder function",
-  Q21_AMBULATORY_ISSUES: "Neuromuscular condition with ambulatory issues",
 } as const;
 
 // BMI ranges for Q2

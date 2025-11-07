@@ -98,9 +98,10 @@ export interface Q14Answer {
 }
 
 export interface Q15Answer {
-  respiratory: boolean;
+  respiratory: boolean; // COPD, emphysema, CF
   oxygenTherapy?: boolean;
   sleepApnea?: boolean;
+  sleepApneaDailyTreatment?: boolean; // BIPAP, CPAP, or oral appliance used daily
   asthma?: boolean;
   asthmaSeverity?: "mild" | "moderate" | "severe";
 }
