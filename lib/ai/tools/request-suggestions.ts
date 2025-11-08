@@ -37,37 +37,123 @@ export const requestSuggestions = ({
         "userId" | "createdAt" | "documentCreatedAt"
       >[] = [];
 
-      const { elementStream } = streamObject({
-        model: myProvider.languageModel("artifact-model"),
-        system:
-          "You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.",
-        prompt: document.content,
-        output: "array",
-        schema: z.object({
-          originalSentence: z.string().describe("The original sentence"),
-          suggestedSentence: z.string().describe("The suggested sentence"),
-          description: z.string().describe("The description of the suggestion"),
-        }),
-      });
-
-      for await (const element of elementStream) {
-        // @ts-expect-error todo: fix type
-        const suggestion: Suggestion = {
-          originalText: element.originalSentence,
-          suggestedText: element.suggestedSentence,
-          description: element.description,
-          id: generateUUID(),
-          documentId,
-          isResolved: false,
-        };
-
-        dataStream.write({
-          type: "data-suggestion",
-          data: suggestion,
-          transient: true,
+      let elementStream;
+      try {
+        const result = streamObject({
+          model: myProvider.languageModel("artifact-model"),
+          system:
+            "You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.",
+          prompt: document.content,
+          output: "array",
+          schema: z.object({
+            originalSentence: z.string().describe("The original sentence"),
+            suggestedSentence: z.string().describe("The suggested sentence"),
+            description: z.string().describe("The description of the suggestion"),
+          }),
+          maxRetries: 2, // 3 total attempts
         });
+        elementStream = result.elementStream;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const isRetryable =
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("429") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("RESOURCE_EXHAUSTED");
 
-        suggestions.push(suggestion);
+        if (isRetryable) {
+          console.warn(
+            "Primary artifact-model failed, falling back to gemini-2.0-flash"
+          );
+          const result = streamObject({
+            model: myProvider.languageModel("fallback-model"),
+            system:
+              "You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.",
+            prompt: document.content,
+            output: "array",
+            schema: z.object({
+              originalSentence: z.string().describe("The original sentence"),
+              suggestedSentence: z.string().describe("The suggested sentence"),
+              description: z.string().describe("The description of the suggestion"),
+            }),
+            maxRetries: 0, // No retries on fallback
+          });
+          elementStream = result.elementStream;
+        } else {
+          throw error;
+        }
+      }
+
+      try {
+        for await (const element of elementStream) {
+          // @ts-expect-error todo: fix type
+          const suggestion: Suggestion = {
+            originalText: element.originalSentence,
+            suggestedText: element.suggestedSentence,
+            description: element.description,
+            id: generateUUID(),
+            documentId,
+            isResolved: false,
+          };
+
+          dataStream.write({
+            type: "data-suggestion",
+            data: suggestion,
+            transient: true,
+          });
+
+          suggestions.push(suggestion);
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const isRetryable =
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("429") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("RESOURCE_EXHAUSTED");
+
+        if (isRetryable) {
+          console.warn(
+            "Primary artifact-model stream failed, falling back to gemini-2.0-flash"
+          );
+          const result = streamObject({
+            model: myProvider.languageModel("fallback-model"),
+            system:
+              "You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.",
+            prompt: document.content,
+            output: "array",
+            schema: z.object({
+              originalSentence: z.string().describe("The original sentence"),
+              suggestedSentence: z.string().describe("The suggested sentence"),
+              description: z.string().describe("The description of the suggestion"),
+            }),
+            maxRetries: 0,
+          });
+
+          for await (const element of result.elementStream) {
+            // @ts-expect-error todo: fix type
+            const suggestion: Suggestion = {
+              originalText: element.originalSentence,
+              suggestedText: element.suggestedSentence,
+              description: element.description,
+              id: generateUUID(),
+              documentId,
+              isResolved: false,
+            };
+
+            dataStream.write({
+              type: "data-suggestion",
+              data: suggestion,
+              transient: true,
+            });
+
+            suggestions.push(suggestion);
+          }
+        } else {
+          throw error;
+        }
       }
 
       if (session.user?.id) {

@@ -13,7 +13,6 @@ const GOOGLE_API_KEY = process.env.GOOGLE_GENERATIVE_AI_KEY;
 
 const google = createGoogleGenerativeAI({
   apiKey: GOOGLE_API_KEY,
-  maxRetries: 5,
 });
 
 export const myProvider = isTestEnvironment
@@ -44,5 +43,6 @@ export const myProvider = isTestEnvironment
         // "artifact-model": gateway.languageModel("xai/grok-2-1212"),
         "title-model": google("gemini-2.5-flash"),
         "artifact-model": google("gemini-2.5-flash"),
+        "fallback-model": google("gemini-2.0-flash"),
       },
     });

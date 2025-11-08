@@ -28,6 +28,7 @@ import {
   systemPrompt,
 } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
+import { withRetryAndFallback } from "@/lib/ai/retry-with-fallback";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -213,50 +214,54 @@ export async function POST(request: Request) {
 
       if (hasInsuranceKeyword) {
         try {
-          const detectionResult = await generateObject({
-            model: myProvider.languageModel("title-model"), // Use lightweight model for detection
-            system:
-              "You are a classifier that determines if a user message is about starting an insurance questionnaire or application. Return true if the user wants to apply for insurance, get insurance quotes, complete an insurance questionnaire, or provide health/lifestyle information for insurance purposes. Also extract any demographics mentioned (age, gender, height, weight).",
-            prompt: messageText,
-            schema: z.object({
-              isQuestionnaireRequest: z
-                .boolean()
-                .describe(
-                  "Whether this message is requesting to start an insurance questionnaire"
-                ),
-              confidence: z
-                .number()
-                .min(0)
-                .max(1)
-                .describe("Confidence level (0-1)"),
-              demographics: z
-                .object({
-                  age: z
+          const detectionResult = await withRetryAndFallback(
+            "title-model",
+            async (model, maxRetries) =>
+              generateObject({
+                model,
+                system:
+                  "You are a classifier that determines if a user message is about starting an insurance questionnaire or application. Return true if the user wants to apply for insurance, get insurance quotes, complete an insurance questionnaire, or provide health/lifestyle information for insurance purposes. Also extract any demographics mentioned (age, gender, height, weight).",
+                prompt: messageText,
+                schema: z.object({
+                  isQuestionnaireRequest: z
+                    .boolean()
+                    .describe(
+                      "Whether this message is requesting to start an insurance questionnaire"
+                    ),
+                  confidence: z
                     .number()
-                    .int()
-                    .positive()
+                    .min(0)
+                    .max(1)
+                    .describe("Confidence level (0-1)"),
+                  demographics: z
+                    .object({
+                      age: z
+                        .number()
+                        .int()
+                        .positive()
+                        .optional()
+                        .describe("Age in years if mentioned"),
+                      gender: z
+                        .enum(["male", "female"])
+                        .optional()
+                        .describe("Gender if mentioned"),
+                      height: z
+                        .number()
+                        .positive()
+                        .optional()
+                        .describe("Height in cm if mentioned"),
+                      weight: z
+                        .number()
+                        .positive()
+                        .optional()
+                        .describe("Weight in kg if mentioned"),
+                    })
                     .optional()
-                    .describe("Age in years if mentioned"),
-                  gender: z
-                    .enum(["male", "female"])
-                    .optional()
-                    .describe("Gender if mentioned"),
-                  height: z
-                    .number()
-                    .positive()
-                    .optional()
-                    .describe("Height in cm if mentioned"),
-                  weight: z
-                    .number()
-                    .positive()
-                    .optional()
-                    .describe("Weight in kg if mentioned"),
-                })
-                .optional()
-                .describe("Demographics extracted from the message"),
-            }),
-            maxRetries: 5, // Ensure retries for this call too
-          });
+                    .describe("Demographics extracted from the message"),
+                }),
+                maxRetries,
+              })
+          );
 
           // Lower threshold to 0.5 for better detection, or if keyword matched, use 0.3
           const threshold = 0.3; // Lower threshold since we already have keyword match
@@ -415,52 +420,137 @@ export async function POST(request: Request) {
             : {}),
         };
 
-        const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
-          system: systemPromptText,
-          messages: convertToModelMessages(uiMessages),
-          stopWhen: stepCountIs(5),
-          experimental_activeTools: activeTools,
-          experimental_transform: smoothStream({ chunking: "word" }),
-          tools: toolsWithStream,
-          maxRetries: 5, // Ensure retries for all chat calls
-          experimental_telemetry: {
-            isEnabled: isProductionEnvironment,
-            functionId: "stream-text",
-          },
-          onFinish: async ({ usage }) => {
-            try {
-              const providers = await getTokenlensCatalog();
-              const modelId =
-                myProvider.languageModel(selectedChatModel).modelId;
-              if (!modelId) {
-                finalMergedUsage = usage;
+        let result;
+        let usedFallback = false;
+        try {
+          result = streamText({
+            model: myProvider.languageModel(selectedChatModel),
+            system: systemPromptText,
+            messages: convertToModelMessages(uiMessages),
+            stopWhen: stepCountIs(5),
+            experimental_activeTools: activeTools,
+            experimental_transform: smoothStream({ chunking: "word" }),
+            tools: toolsWithStream,
+            maxRetries: 2, // 3 total attempts (1 initial + 2 retries)
+            experimental_telemetry: {
+              isEnabled: isProductionEnvironment,
+              functionId: "stream-text",
+            },
+            onFinish: async ({ usage }) => {
+              try {
+                const providers = await getTokenlensCatalog();
+                const modelId = usedFallback
+                  ? myProvider.languageModel("fallback-model").modelId
+                  : myProvider.languageModel(selectedChatModel).modelId;
+                if (!modelId) {
+                  finalMergedUsage = usage;
+                  dataStream.write({
+                    type: "data-usage",
+                    data: finalMergedUsage,
+                  });
+                  return;
+                }
+
+                if (!providers) {
+                  finalMergedUsage = usage;
+                  dataStream.write({
+                    type: "data-usage",
+                    data: finalMergedUsage,
+                  });
+                  return;
+                }
+
+                const summary = getUsage({ modelId, usage, providers });
+                finalMergedUsage = {
+                  ...usage,
+                  ...summary,
+                  modelId,
+                } as AppUsage;
                 dataStream.write({
                   type: "data-usage",
                   data: finalMergedUsage,
                 });
-                return;
-              }
-
-              if (!providers) {
+              } catch (err) {
+                console.warn("TokenLens enrichment failed", err);
                 finalMergedUsage = usage;
-                dataStream.write({
-                  type: "data-usage",
-                  data: finalMergedUsage,
-                });
-                return;
+                dataStream.write({ type: "data-usage", data: finalMergedUsage });
               }
+            },
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          const isRetryable =
+            errorMessage.includes("rate limit") ||
+            errorMessage.includes("429") ||
+            errorMessage.includes("quota") ||
+            errorMessage.includes("RESOURCE_EXHAUSTED");
 
-              const summary = getUsage({ modelId, usage, providers });
-              finalMergedUsage = { ...usage, ...summary, modelId } as AppUsage;
-              dataStream.write({ type: "data-usage", data: finalMergedUsage });
-            } catch (err) {
-              console.warn("TokenLens enrichment failed", err);
-              finalMergedUsage = usage;
-              dataStream.write({ type: "data-usage", data: finalMergedUsage });
-            }
-          },
-        });
+          if (isRetryable) {
+            console.warn(
+              `Primary model ${selectedChatModel} failed, falling back to gemini-2.0-flash`
+            );
+            usedFallback = true;
+            result = streamText({
+              model: myProvider.languageModel("fallback-model"),
+              system: systemPromptText,
+              messages: convertToModelMessages(uiMessages),
+              stopWhen: stepCountIs(5),
+              experimental_activeTools: activeTools,
+              experimental_transform: smoothStream({ chunking: "word" }),
+              tools: toolsWithStream,
+              maxRetries: 0, // No retries on fallback
+              experimental_telemetry: {
+                isEnabled: isProductionEnvironment,
+                functionId: "stream-text",
+              },
+              onFinish: async ({ usage }) => {
+                try {
+                  const providers = await getTokenlensCatalog();
+                  const modelId =
+                    myProvider.languageModel("fallback-model").modelId;
+                  if (!modelId) {
+                    finalMergedUsage = usage;
+                    dataStream.write({
+                      type: "data-usage",
+                      data: finalMergedUsage,
+                    });
+                    return;
+                  }
+
+                  if (!providers) {
+                    finalMergedUsage = usage;
+                    dataStream.write({
+                      type: "data-usage",
+                      data: finalMergedUsage,
+                    });
+                    return;
+                  }
+
+                  const summary = getUsage({ modelId, usage, providers });
+                  finalMergedUsage = {
+                    ...usage,
+                    ...summary,
+                    modelId,
+                  } as AppUsage;
+                  dataStream.write({
+                    type: "data-usage",
+                    data: finalMergedUsage,
+                  });
+                } catch (err) {
+                  console.warn("TokenLens enrichment failed", err);
+                  finalMergedUsage = usage;
+                  dataStream.write({
+                    type: "data-usage",
+                    data: finalMergedUsage,
+                  });
+                }
+              },
+            });
+          } else {
+            throw error;
+          }
+        }
 
         result.consumeStream();
 
