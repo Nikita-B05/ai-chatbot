@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
+import { Suspense } from "react";
 import { PlusIcon, SparklesIcon } from "@/components/icons";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
@@ -13,6 +14,8 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
+  SidebarGroup,
+  SidebarGroupContent,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -66,7 +69,36 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarHistory user={user} />
+          <Suspense
+            fallback={
+              <SidebarGroup>
+                <div className="px-2 py-1 text-sidebar-foreground/50 text-xs">
+                  Today
+                </div>
+                <SidebarGroupContent>
+                  <div className="flex flex-col">
+                    {[44, 32, 28, 64, 52].map((item) => (
+                      <div
+                        className="flex h-8 items-center gap-2 rounded-md px-2"
+                        key={item}
+                      >
+                        <div
+                          className="h-4 max-w-(--skeleton-width) flex-1 rounded-md bg-sidebar-accent-foreground/10"
+                          style={
+                            {
+                              "--skeleton-width": `${item}%`,
+                            } as React.CSSProperties
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            }
+          >
+            <SidebarHistory user={user} />
+          </Suspense>
         </SidebarContent>
         <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
       </Sidebar>

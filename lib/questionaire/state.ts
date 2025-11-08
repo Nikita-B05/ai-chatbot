@@ -377,19 +377,40 @@ export function getNextFollowUpQuestion(
 
 /**
  * Recalculates the recommended plan based on currently eligible plans.
+ * Ensures the recommended plan respects the plan floor (never better than floor).
  */
 export function updateRecommendedPlan(
   state: QuestionnaireClientState
 ): QuestionnaireClientState {
-  const recommendedPlan = getBestEligiblePlan(state.eligiblePlans);
+  // Filter eligible plans by plan floor if it exists
+  let filteredPlans = state.eligiblePlans;
+  if (state.planFloor && state.planFloor !== "DECLINE") {
+    filteredPlans = filterPlansByMinimumTier(
+      state.eligiblePlans,
+      state.planFloor
+    );
+  }
 
-  if (state.recommendedPlan === recommendedPlan) {
+  const recommendedPlan = getBestEligiblePlan(filteredPlans);
+
+  // Ensure recommended plan respects plan floor
+  let finalRecommendedPlan = recommendedPlan;
+  if (state.planFloor && recommendedPlan && state.planFloor !== "DECLINE") {
+    const floorPriority = PLAN_PRIORITY[state.planFloor];
+    const recommendedPriority = PLAN_PRIORITY[recommendedPlan];
+    // If recommended plan is better (lower priority) than floor, use floor instead
+    if (recommendedPriority < floorPriority) {
+      finalRecommendedPlan = state.planFloor;
+    }
+  }
+
+  if (state.recommendedPlan === finalRecommendedPlan) {
     return state;
   }
 
   return {
     ...state,
-    recommendedPlan,
+    recommendedPlan: finalRecommendedPlan,
   };
 }
 

@@ -64,7 +64,7 @@ export const requestSuggestions = ({
 
         if (isRetryable) {
           console.warn(
-            "Primary artifact-model failed, falling back to gemini-2.0-flash"
+            "Primary artifact-model failed, falling back to gemini-2.0-flash-lite"
           );
           const result = streamObject({
             model: myProvider.languageModel("fallback-model"),
@@ -116,7 +116,7 @@ export const requestSuggestions = ({
 
         if (isRetryable) {
           console.warn(
-            "Primary artifact-model stream failed, falling back to gemini-2.0-flash"
+            "Primary artifact-model stream failed, falling back to gemini-2.0-flash-lite"
           );
           const result = streamObject({
             model: myProvider.languageModel("fallback-model"),

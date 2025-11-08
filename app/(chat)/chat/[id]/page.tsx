@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { auth } from "@/app/(auth)/auth";
 import { Chat } from "@/components/chat";
@@ -8,7 +9,7 @@ import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
 
-export default async function Page(props: { params: Promise<{ id: string }> }) {
+async function ChatContent(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const { id } = params;
   const chat = await getChatById({ id });
@@ -70,5 +71,19 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       />
       <DataStreamHandler />
     </>
+  );
+}
+
+export default function Page(props: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center">
+          <div className="text-sm text-zinc-500">Loading chat...</div>
+        </div>
+      }
+    >
+      <ChatContent params={props.params} />
+    </Suspense>
   );
 }

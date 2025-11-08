@@ -442,6 +442,12 @@ export async function POST(request: Request) {
                 const modelId = usedFallback
                   ? myProvider.languageModel("fallback-model").modelId
                   : myProvider.languageModel(selectedChatModel).modelId;
+                
+                // Log API usage for verification
+                console.log(
+                  `[Gemini API] Model: ${modelId || "unknown"}, Tokens: ${usage.inputTokens || 0} input + ${usage.outputTokens || 0} output = ${usage.totalTokens || 0} total`
+                );
+                
                 if (!modelId) {
                   finalMergedUsage = usage;
                   dataStream.write({
@@ -488,7 +494,7 @@ export async function POST(request: Request) {
 
           if (isRetryable) {
             console.warn(
-              `Primary model ${selectedChatModel} failed, falling back to gemini-2.0-flash`
+              `Primary model ${selectedChatModel} failed, falling back to gemini-2.0-flash-lite`
             );
             usedFallback = true;
             result = streamText({
@@ -552,13 +558,19 @@ export async function POST(request: Request) {
           }
         }
 
-        result.consumeStream();
+        try {
+          result.consumeStream();
 
-        dataStream.merge(
-          result.toUIMessageStream({
-            sendReasoning: true,
-          })
-        );
+          dataStream.merge(
+            result.toUIMessageStream({
+              sendReasoning: true,
+            })
+          );
+        } catch (streamError) {
+          console.error("Error consuming or merging stream:", streamError);
+          // Re-throw to be caught by outer error handler
+          throw streamError;
+        }
       },
       generateId: generateUUID,
       onFinish: async ({ messages }) => {

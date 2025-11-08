@@ -287,6 +287,8 @@ ${formatQuestionList(answeredQuestions)}
    - If a user mentions something relevant, ask follow-up questions immediately
    - Don't ask questions that are already answered unless the user is correcting an answer
    - If a user corrects a previous answer, update it using the tool
+   - **ALWAYS provide a text response to the user, even when using tools**
+   - When a user asks about their profile, current state, or eligibility, provide a clear summary in your text response
 
 6. **Question Dependencies:**
    - Some questions depend on others being answered first

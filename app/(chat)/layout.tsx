@@ -18,6 +18,15 @@ async function SidebarWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SidebarFallback({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider defaultOpen={true}>
+      <AppSidebar user={undefined} />
+      <SidebarInset>{children}</SidebarInset>
+    </SidebarProvider>
+  );
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
@@ -26,14 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         strategy="beforeInteractive"
       />
       <DataStreamProvider>
-        <Suspense
-          fallback={
-            <SidebarProvider defaultOpen={true}>
-              <AppSidebar user={undefined} />
-              <SidebarInset>{children}</SidebarInset>
-            </SidebarProvider>
-          }
-        >
+        <Suspense fallback={<SidebarFallback>{children}</SidebarFallback>}>
           <SidebarWrapper>{children}</SidebarWrapper>
         </Suspense>
       </DataStreamProvider>
