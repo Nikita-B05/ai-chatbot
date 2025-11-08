@@ -133,14 +133,28 @@ export const questionnairePrompt = ({
 
   // Format available questions for display
   const mandatoryQuestions = availableQuestions.filter(
-    (q) => !q.answered && (q.id === "gender" || q.id === "q1" || q.id === "q2")
+    (q) => q.priority === "mandatory" && !q.answered
+  );
+  const priorityFollowUps = availableQuestions
+    .filter((q) => q.priority === "follow-up")
+    .sort((a, b) => {
+      const aPos = a.queuePosition ?? Number.MAX_SAFE_INTEGER;
+      const bPos = b.queuePosition ?? Number.MAX_SAFE_INTEGER;
+      return aPos - bPos;
+    });
+  const fallbackQuestions = availableQuestions.filter(
+    (q) => q.priority === "fallback" && !q.answered
   );
   const otherAvailableQuestions = availableQuestions.filter(
-    (q) => q.available && !q.answered && !mandatoryQuestions.includes(q)
+    (q) => q.priority === "standard" && q.available && !q.answered
   );
   const answeredQuestions = availableQuestions.filter((q) => q.answered);
   const pendingQuestions = availableQuestions.filter(
-    (q) => !q.available && !q.answered && q.dependenciesMet
+    (q) =>
+      !q.available &&
+      !q.answered &&
+      q.dependenciesMet &&
+      q.priority !== "follow-up"
   );
 
   // Build question list text
@@ -152,15 +166,52 @@ export const questionnairePrompt = ({
           q.dependencies.length > 0
             ? ` (depends on: ${q.dependencies.join(", ")})`
             : "";
-        const statusText = q.answered
-          ? " [ANSWERED]"
-          : q.asked
-            ? " [ASKED]"
-            : "";
+        const tags: string[] = [];
+
+        if (q.worstOutcome === "DECLINE") {
+          tags.push("IMPACT: DECLINE");
+        } else if (q.worstOutcome) {
+          tags.push(`IMPACT: ≤ ${q.worstOutcome}`);
+        } else if (!q.impactsPlan) {
+          tags.push("NO PLAN IMPACT");
+        }
+
+        if (q.priority === "mandatory" && !q.answered) {
+          tags.push("MANDATORY");
+        }
+        if (q.priority === "follow-up") {
+          if (q.queuePosition) {
+            tags.push(`QUEUE #${q.queuePosition}`);
+          } else {
+            tags.push("FOLLOW-UP");
+          }
+        }
+        if (q.priority === "fallback" && !q.answered) {
+          tags.push("FALLBACK");
+        }
+        if (q.available && !q.answered) {
+          tags.push("AVAILABLE");
+        } else if (!q.available && q.dependenciesMet && !q.answered) {
+          tags.push("READY");
+        }
+        if (q.asked && !q.answered) {
+          tags.push("ASKED");
+        }
+        if (q.answered) {
+          tags.push("ANSWERED");
+        }
+
+        const statusText = tags.length > 0 ? ` [${tags.join(", ")}]` : "";
+
         return `- ${q.id}: ${q.description}${depsText}${statusText}`;
       })
       .join("\n");
   };
+
+  const bestPlanText =
+    state.recommendedPlan === "DECLINE"
+      ? "DECLINE (no eligible plans)"
+      : state.recommendedPlan ?? "Not determined";
 
   const prompt = `You are a friendly insurance questionnaire assistant helping users complete a health and lifestyle questionnaire for insurance eligibility.
 
@@ -176,6 +227,7 @@ export const questionnairePrompt = ({
 **Rate Type:** ${state.rateType ?? "Not determined"}
 
 **Eligible Plans:** ${state.eligiblePlans.join(", ") || "None"}
+**Best Eligible Plan:** ${bestPlanText}
 ${state.currentPlan ? `**Current Plan:** ${state.currentPlan}` : ""}
 ${state.declined ? `**Status:** DECLINED - ${state.declineReason ?? "No reason provided"}` : ""}
 
@@ -183,6 +235,7 @@ ${state.declined ? `**Status:** DECLINED - ${state.declineReason ?? "No reason p
 - Questions Asked: ${state.questionsAsked.length}
 - Questions Answered: ${state.questionsAnswered.length}
 - Available Questions: ${availableQuestions.filter((q) => q.available && !q.answered).length}
+- Follow-up Queue Length: ${state.followUpQueue?.length ?? 0}
 
 ${state.mentionedConditions && state.mentionedConditions.length > 0 ? `**Mentioned Conditions:** ${state.mentionedConditions.join(", ")}` : ""}
 
@@ -191,8 +244,14 @@ ${state.mentionedConditions && state.mentionedConditions.length > 0 ? `**Mention
 **Mandatory Questions (Must be asked first if not answered):**
 ${formatQuestionList(mandatoryQuestions)}
 
+**Priority Follow-ups (resolve in queue order):**
+${formatQuestionList(priorityFollowUps)}
+
 **Other Available Questions:**
 ${formatQuestionList(otherAvailableQuestions)}
+
+**Fallback Question (use only when no follow-ups remain):**
+${formatQuestionList(fallbackQuestions)}
 
 **Pending Questions (Dependencies met, but not yet available):**
 ${formatQuestionList(pendingQuestions)}
@@ -202,10 +261,11 @@ ${formatQuestionList(answeredQuestions)}
 
 ## Instructions
 
-1. **Question Priority:**
-   - Always ask mandatory questions first (gender, q1, q2) if not answered
-   - Then prioritize questions relevant to mentioned conditions
-   - Finally, ask other available questions in a natural flow
+1. **Plan-Aware Question Priority:**
+   - Always ask mandatory questions first (gender, q1, q2) if not answered.
+   - Focus on questions whose impact can push the client from the current best plan to the next tier down (check the IMPACT tag). Do not open new lower-tier topics until higher tiers are conclusively ruled out.
+   - When the best available plan reaches **Guaranteed+**, only ask unresolved questions marked IMPACT: DECLINE. If all decline-trigger questions are cleared without triggering a decline, recommend **Guaranteed+** immediately; a positive decline trigger means the client is declined.
+   - Work through the follow-up queue in order before introducing any fallback question.
 
 2. **Dynamic Condition Detection:**
    - Listen for conditions mentioned by the user (e.g., "I have diabetes", "I had a heart attack", "I smoke")
@@ -233,9 +293,9 @@ ${formatQuestionList(answeredQuestions)}
    - Only ask questions when their dependencies are met
 
 7. **Completion:**
-   - Continue asking questions until all relevant questions are answered
-   - If declined, inform the user of the reason
-   - If eligible, inform the user of their current plan tier
+   - Continue asking questions until all plan-impacting items are resolved.
+   - If declined, inform the user of the decline reason and make it explicit that they are not eligible for any plans; avoid re-opening new topics.
+   - If eligible, provide only the single best plan tier the client still qualifies for—do not enumerate every remaining option.
 
 ## Important Notes
 
@@ -246,8 +306,10 @@ ${formatQuestionList(answeredQuestions)}
   - Set the next question to ask
 
 - Be conversational and friendly, but thorough
-- Don't skip questions that are relevant based on user responses
+- Don't skip questions that are relevant based on user responses or queued follow-ups
+- Once the follow-up queue is empty, re-evaluate before introducing new topics
 - If a user mentions something that triggers multiple questions, ask them all
+- When the questionnaire is complete, report only the single best plan the client qualifies for (or the decline reason). Do not list every eligible plan tier.
 
 ${requestPrompt}`;
 

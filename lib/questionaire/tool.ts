@@ -1,8 +1,15 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { canAskQuestion } from "./router";
+import { canAskQuestion, getQuestionsForMentionedConditions } from "./router";
 import { applyRuleResult, evaluateRules } from "./rules";
-import { calculateBMI, getAvailableQuestions, updateBMIInState, updateStateWithAnswer } from "./state";
+import {
+  calculateBMI,
+  enqueueFollowUpQuestions,
+  getAvailableQuestions,
+  getNextFollowUpQuestion,
+  updateBMIInState,
+  updateStateWithAnswer,
+} from "./state";
 import type {
   Gender,
   Q1Answer,
@@ -83,13 +90,53 @@ export const updateQuestionnaireState = ({
       // Add mentioned conditions
       if (input.addMentionedCondition && input.addMentionedCondition.length > 0) {
         const existingConditions = newState.mentionedConditions ?? [];
-        const newConditions = input.addMentionedCondition.filter(
-          (condition) => !existingConditions.includes(condition.toLowerCase())
+        const normalizedExistingSet = new Set(
+          existingConditions.map((condition) => condition.toLowerCase())
         );
-        newState.mentionedConditions = [
-          ...existingConditions,
-          ...newConditions.map((c) => c.toLowerCase()),
+        const normalizedIncoming = input.addMentionedCondition
+          .map((condition) => condition.toLowerCase().trim())
+          .filter((condition) => condition.length > 0);
+
+        const updatedConditions = [
+          ...new Set([...normalizedExistingSet, ...normalizedIncoming]),
         ];
+
+        newState.mentionedConditions = updatedConditions;
+
+        const newlyAddedConditions = normalizedIncoming.filter(
+          (condition) => !normalizedExistingSet.has(condition)
+        );
+
+        if (newlyAddedConditions.length > 0) {
+          const relevantQuestions = getQuestionsForMentionedConditions(
+            newlyAddedConditions,
+            newState
+          );
+
+          const affectedQuestions = relevantQuestions.filter((questionId) =>
+            newState.questionsAnswered.includes(questionId)
+          );
+          const unansweredQuestions = relevantQuestions.filter(
+            (questionId) => !newState.questionsAnswered.includes(questionId)
+          );
+
+          for (const questionId of affectedQuestions) {
+            delete newState.answers[questionId as keyof typeof newState.answers];
+            newState.questionsAnswered = newState.questionsAnswered.filter(
+              (askedQuestion) => askedQuestion !== questionId
+            );
+            newState.questionsAsked = newState.questionsAsked.filter(
+              (askedQuestion) => askedQuestion !== questionId
+            );
+          }
+
+          if (unansweredQuestions.length > 0) {
+            newState = enqueueFollowUpQuestions(
+              newState,
+              unansweredQuestions
+            );
+          }
+        }
       }
 
       // Answer a question
@@ -134,13 +181,23 @@ export const updateQuestionnaireState = ({
         }
       }
 
-      // Set current question
+      // Determine available questions and next question
+      const availableQuestions = getAvailableQuestions(newState);
+
       if (input.setCurrentQuestion) {
         newState.currentQuestion = input.setCurrentQuestion;
+      } else if (newState.declined) {
+        newState.currentQuestion = undefined;
+      } else {
+        const nextFollowUp = getNextFollowUpQuestion(newState);
+        if (nextFollowUp) {
+          newState.currentQuestion = nextFollowUp;
+        } else if (availableQuestions.length > 0) {
+          newState.currentQuestion = availableQuestions[0];
+        } else {
+          newState.currentQuestion = undefined;
+        }
       }
-
-      // Recalculate available questions
-      const availableQuestions = getAvailableQuestions(newState);
 
       // Notify callback if provided
       if (onStateUpdate) {
@@ -160,11 +217,14 @@ export const updateQuestionnaireState = ({
           rateType: newState.rateType,
           eligiblePlans: newState.eligiblePlans,
           currentPlan: newState.currentPlan,
+          recommendedPlan: newState.recommendedPlan,
           declined: newState.declined,
           declineReason: newState.declineReason,
           questionsAnswered: newState.questionsAnswered,
           questionsAsked: newState.questionsAsked,
           mentionedConditions: newState.mentionedConditions,
+          currentQuestion: newState.currentQuestion,
+          followUpQueue: newState.followUpQueue,
         },
         availableQuestions,
         message: input.answerQuestion

@@ -159,6 +159,13 @@ export function getQuestionDescription(
 }
 
 /**
+ * Get follow-up question IDs for a specific question
+ */
+export function getFollowUpsForQuestion(questionId: string): string[] {
+  return QUESTION_DESCRIPTIONS[questionId]?.followUps ?? [];
+}
+
+/**
  * Get all question IDs that cover a specific topic/condition
  * Uses keyword matching on topics array
  */

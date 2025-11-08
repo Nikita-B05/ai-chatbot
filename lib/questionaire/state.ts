@@ -3,8 +3,10 @@ import {
   PLAN_PRIORITY,
   PLAN_TIERS,
   QUESTION_DEPENDENCIES,
+  QUESTION_ORDER,
+  QUESTION_WORST_OUTCOME,
 } from "./constants";
-import type { PlanTier, QuestionnaireClientState } from "./types";
+import type { PlanOutcome, PlanTier, QuestionnaireClientState } from "./types";
 
 /**
  * Creates an initial empty questionnaire state
@@ -13,9 +15,11 @@ export function createInitialState(): QuestionnaireClientState {
   return {
     answers: {},
     eligiblePlans: [...PLAN_TIERS],
+    recommendedPlan: getBestEligiblePlan(PLAN_TIERS),
     declined: false,
     questionsAsked: [],
     questionsAnswered: [],
+    followUpQueue: [],
     completed: false,
     startedAt: new Date().toISOString(),
   };
@@ -31,17 +35,17 @@ export function calculateBMI(height: number, weight: number): number {
 }
 
 /**
- * Gets the highest priority eligible plan from the list
+ * Gets the best (highest quality) eligible plan from the list
  */
-export function getHighestEligiblePlan(
+export function getBestEligiblePlan(
   eligiblePlans: PlanTier[]
 ): PlanTier | undefined {
   if (eligiblePlans.length === 0) {
     return;
   }
 
-  return eligiblePlans.reduce((highest, current) => {
-    return PLAN_PRIORITY[current] > PLAN_PRIORITY[highest] ? current : highest;
+  return eligiblePlans.reduce((best, current) => {
+    return PLAN_PRIORITY[current] < PLAN_PRIORITY[best] ? current : best;
   });
 }
 
@@ -67,6 +71,79 @@ export function removePlan(
 }
 
 /**
+ * Returns the worst-case plan outcome a question can trigger.
+ */
+export function getQuestionPlanImpact(questionId: string): PlanOutcome | null {
+  return QUESTION_WORST_OUTCOME[questionId] ?? null;
+}
+
+function getEffectiveBaselinePlan(
+  state: QuestionnaireClientState
+): PlanOutcome | undefined {
+  if (state.declined) {
+    return "DECLINE";
+  }
+
+  const bestPlan = getBestEligiblePlan(state.eligiblePlans);
+  if (bestPlan) {
+    return bestPlan;
+  }
+
+  return state.recommendedPlan;
+}
+
+/**
+ * Returns true if a question can still worsen the client's current best plan.
+ */
+export function isQuestionPlanRelevant(
+  questionId: string,
+  state: QuestionnaireClientState
+): boolean {
+  if (MANDATORY_QUESTIONS.includes(questionId as any)) {
+    return true;
+  }
+
+  if (state.declined) {
+    return false;
+  }
+
+  const impact = QUESTION_WORST_OUTCOME[questionId];
+
+  // If we lack metadata, err on the side of asking
+  if (impact === undefined) {
+    return true;
+  }
+
+  // Explicitly marked as no impact
+  if (impact === null) {
+    return false;
+  }
+
+  const baselinePlan = getEffectiveBaselinePlan(state);
+
+  if (!baselinePlan) {
+    return true;
+  }
+
+  if (baselinePlan === "DECLINE") {
+    return false;
+  }
+
+  if (baselinePlan === "Guaranteed+") {
+    return impact === "DECLINE";
+  }
+
+  if (impact === "DECLINE") {
+    return true;
+  }
+
+  const baselinePriority = PLAN_PRIORITY[baselinePlan];
+  const impactPriority = PLAN_PRIORITY[impact];
+
+  return impactPriority > baselinePriority;
+}
+
+/**
  * Updates the state with a new answer to a question
  */
 export function updateStateWithAnswer(
@@ -75,6 +152,9 @@ export function updateStateWithAnswer(
   answer: any
 ): QuestionnaireClientState {
   const { currentQuestion: _, ...stateWithoutCurrentQuestion } = state;
+  const filteredQueue = state.followUpQueue.filter(
+    (queuedId) => queuedId !== questionId
+  );
 
   return {
     ...stateWithoutCurrentQuestion,
@@ -83,6 +163,7 @@ export function updateStateWithAnswer(
       [questionId]: answer,
     },
     questionsAnswered: [...new Set([...state.questionsAnswered, questionId])],
+    followUpQueue: filteredQueue,
   };
 }
 
@@ -93,33 +174,38 @@ export function updateStateWithAnswer(
 export function getAvailableQuestions(
   state: QuestionnaireClientState
 ): string[] {
+  if (state.declined) {
+    return [];
+  }
+
   const available: string[] = [];
+  const answered = new Set(state.questionsAnswered);
+  const seen = new Set<string>();
 
   // Check mandatory questions first
   for (const q of MANDATORY_QUESTIONS) {
-    if (!state.questionsAnswered.includes(q)) {
+    if (!answered.has(q) && canAskQuestion(q, state)) {
       available.push(q);
+      seen.add(q);
     }
   }
 
-  // Check other questions (q1 through q25)
-  for (let i = 1; i <= 25; i++) {
-    const questionId = `q${i}`;
-
-    // Skip if already answered
-    if (state.questionsAnswered.includes(questionId)) {
+  // Prioritize follow-up queue next
+  for (const queuedQuestion of state.followUpQueue) {
+    if (seen.has(queuedQuestion) || answered.has(queuedQuestion)) {
       continue;
     }
 
-    // Check dependencies
-    const dependencies = QUESTION_DEPENDENCIES[questionId] ?? [];
-    const dependenciesMet = dependencies.every((dep) =>
-      state.questionsAnswered.includes(dep)
-    );
-
-    if (dependenciesMet) {
-      available.push(questionId);
+    if (canAskQuestion(queuedQuestion, state)) {
+      available.push(queuedQuestion);
+      seen.add(queuedQuestion);
     }
+  }
+
+  // Provide a single fallback question to keep progress moving
+  const fallback = getNextFallbackQuestion(state, seen);
+  if (fallback) {
+    available.push(fallback);
   }
 
   return available;
@@ -132,6 +218,10 @@ export function canAskQuestion(
   questionId: string,
   state: QuestionnaireClientState
 ): boolean {
+  if (state.declined) {
+    return false;
+  }
+
   // Mandatory questions can always be asked if not answered
   if (MANDATORY_QUESTIONS.includes(questionId as any)) {
     return !state.questionsAnswered.includes(questionId);
@@ -144,7 +234,15 @@ export function canAskQuestion(
 
   // Check dependencies
   const dependencies = QUESTION_DEPENDENCIES[questionId] ?? [];
-  return dependencies.every((dep) => state.questionsAnswered.includes(dep));
+  const dependenciesMet = dependencies.every((dep) =>
+    state.questionsAnswered.includes(dep)
+  );
+
+  if (!dependenciesMet) {
+    return false;
+  }
+
+  return isQuestionPlanRelevant(questionId, state);
 }
 
 /**
@@ -172,7 +270,8 @@ export function markAsCompleted(
     ...state,
     completed: true,
     completedAt: new Date().toISOString(),
-    currentPlan: getHighestEligiblePlan(state.eligiblePlans),
+    currentPlan: getBestEligiblePlan(state.eligiblePlans),
+    recommendedPlan: getBestEligiblePlan(state.eligiblePlans),
   };
 }
 
@@ -188,7 +287,120 @@ export function applyDecline(
     declined: true,
     declineReason: reason,
     eligiblePlans: [],
+    recommendedPlan: "DECLINE",
     completed: true,
     completedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Adds follow-up questions to the queue while preserving order and uniqueness.
+ */
+export function enqueueFollowUpQuestions(
+  state: QuestionnaireClientState,
+  followUps: string[]
+): QuestionnaireClientState {
+  if (!followUps || followUps.length === 0) {
+    return state;
+  }
+
+  const answered = new Set(state.questionsAnswered);
+  const existingQueue = new Set(state.followUpQueue);
+  const nextQueue = [...state.followUpQueue];
+
+  for (const followUp of followUps) {
+    if (!followUp || answered.has(followUp) || existingQueue.has(followUp)) {
+      continue;
+    }
+    if (!isQuestionPlanRelevant(followUp, state)) {
+      continue;
+    }
+    nextQueue.push(followUp);
+    existingQueue.add(followUp);
+  }
+
+  if (nextQueue.length === state.followUpQueue.length) {
+    return state;
+  }
+
+  return {
+    ...state,
+    followUpQueue: nextQueue,
+  };
+}
+
+/**
+ * Removes a question from the follow-up queue.
+ */
+export function removeFollowUpQuestion(
+  state: QuestionnaireClientState,
+  questionId: string
+): QuestionnaireClientState {
+  if (state.followUpQueue.length === 0) {
+    return state;
+  }
+
+  const nextQueue = state.followUpQueue.filter((queued) => queued !== questionId);
+
+  if (nextQueue.length === state.followUpQueue.length) {
+    return state;
+  }
+
+  return {
+    ...state,
+    followUpQueue: nextQueue,
+  };
+}
+
+/**
+ * Returns the next follow-up question whose dependencies are satisfied.
+ */
+export function getNextFollowUpQuestion(
+  state: QuestionnaireClientState
+): string | undefined {
+  for (const queuedQuestion of state.followUpQueue) {
+    if (canAskQuestion(queuedQuestion, state)) {
+      return queuedQuestion;
+    }
+  }
+
+  return;
+}
+
+/**
+ * Recalculates the recommended plan based on currently eligible plans.
+ */
+export function updateRecommendedPlan(
+  state: QuestionnaireClientState
+): QuestionnaireClientState {
+  const recommendedPlan = getBestEligiblePlan(state.eligiblePlans);
+
+  if (state.recommendedPlan === recommendedPlan) {
+    return state;
+  }
+
+  return {
+    ...state,
+    recommendedPlan,
+  };
+}
+
+/**
+ * Find the next fallback question outside of the mandatory set and queue.
+ */
+function getNextFallbackQuestion(
+  state: QuestionnaireClientState,
+  seen: Set<string>
+): string | undefined {
+  for (const questionId of QUESTION_ORDER) {
+    if (seen.has(questionId)) {
+      continue;
+    }
+
+    if (canAskQuestion(questionId, state)) {
+      return questionId;
+    }
+  }
+
+  return;
 }

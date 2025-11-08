@@ -4,8 +4,13 @@ import {
   getQuestionDescription,
   QUESTION_DESCRIPTIONS,
 } from "./questions";
-import { canAskQuestion, getAvailableQuestions } from "./state";
-import type { QuestionnaireClientState } from "./types";
+import {
+  canAskQuestion,
+  getAvailableQuestions,
+  getQuestionPlanImpact,
+  isQuestionPlanRelevant,
+} from "./state";
+import type { PlanOutcome, QuestionnaireClientState } from "./types";
 
 export interface AvailableQuestionInfo {
   id: string;
@@ -16,6 +21,10 @@ export interface AvailableQuestionInfo {
   asked: boolean;
   answered: boolean;
   available: boolean;
+  priority: "mandatory" | "follow-up" | "fallback" | "standard";
+  queuePosition?: number;
+  worstOutcome?: PlanOutcome | null;
+  impactsPlan: boolean;
 }
 
 /**
@@ -26,6 +35,22 @@ export function getAvailableQuestionsForLLM(
   state: QuestionnaireClientState
 ): AvailableQuestionInfo[] {
   const availableQuestionIds = getAvailableQuestions(state);
+  const mandatoryPending = new Set<string>(
+    MANDATORY_QUESTIONS.filter(
+      (questionId) => !state.questionsAnswered.includes(questionId)
+    )
+  );
+  const followUpQueue = state.followUpQueue ?? [];
+  const queueIndexMap = new Map<string, number>();
+
+  followUpQueue.forEach((questionId, index) => {
+    queueIndexMap.set(questionId, index);
+  });
+
+  const fallbackQuestionId = availableQuestionIds.find(
+    (questionId) =>
+      !mandatoryPending.has(questionId) && !queueIndexMap.has(questionId)
+  );
   const allQuestionIds = [
     ...MANDATORY_QUESTIONS,
     ...Array.from({ length: 25 }, (_, i) => `q${i + 1}`),
@@ -40,6 +65,25 @@ export function getAvailableQuestionsForLLM(
     const asked = state.questionsAsked.includes(questionId);
     const answered = state.questionsAnswered.includes(questionId);
     const available = availableQuestionIds.includes(questionId);
+    const worstOutcome = getQuestionPlanImpact(questionId);
+    const impactsPlan = isQuestionPlanRelevant(questionId, state);
+    const queuePosition =
+      queueIndexMap.has(questionId) && !answered
+        ? (queueIndexMap.get(questionId) ?? 0) + 1
+        : undefined;
+
+    let priority: AvailableQuestionInfo["priority"] = "standard";
+    if (mandatoryPending.has(questionId) && !answered) {
+      priority = "mandatory";
+    } else if (queueIndexMap.has(questionId) && !answered) {
+      priority = "follow-up";
+    } else if (
+      fallbackQuestionId &&
+      fallbackQuestionId === questionId &&
+      !answered
+    ) {
+      priority = "fallback";
+    }
 
     return {
       id: questionId,
@@ -50,6 +94,10 @@ export function getAvailableQuestionsForLLM(
       asked,
       answered,
       available,
+      priority,
+      queuePosition,
+      worstOutcome: worstOutcome ?? null,
+      impactsPlan,
     };
   });
 }
@@ -105,12 +153,14 @@ export function getQuestionnaireStateSummary(
   rateType?: string;
   eligiblePlans: string[];
   currentPlan?: string;
+  recommendedPlan?: string;
   declined: boolean;
   declineReason?: string;
   questionsAsked: number;
   questionsAnswered: number;
   availableQuestions: number;
   mentionedConditions?: string[];
+  followUpQueue: string[];
 } {
   const availableQuestions = getAvailableQuestions(state);
 
@@ -125,12 +175,14 @@ export function getQuestionnaireStateSummary(
     rateType: state.rateType,
     eligiblePlans: state.eligiblePlans,
     currentPlan: state.currentPlan,
+    recommendedPlan: state.recommendedPlan,
     declined: state.declined,
     declineReason: state.declineReason,
     questionsAsked: state.questionsAsked.length,
     questionsAnswered: state.questionsAnswered.length,
     availableQuestions: availableQuestions.length,
     mentionedConditions: state.mentionedConditions,
+    followUpQueue: state.followUpQueue,
   };
 }
 

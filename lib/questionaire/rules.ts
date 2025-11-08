@@ -9,7 +9,12 @@ import {
   SEIZURE_FREQUENCY,
   YEARS_THRESHOLDS,
 } from "./constants";
-import { filterPlansByMinimumTier } from "./state";
+import {
+  enqueueFollowUpQuestions,
+  filterPlansByMinimumTier,
+  updateRecommendedPlan,
+} from "./state";
+import { getFollowUpsForQuestion } from "./questions";
 import type {
   PlanTier,
   Q1Answer,
@@ -202,6 +207,8 @@ export function evaluateQ4Rules(
   state: QuestionnaireClientState,
   answer: Q4Answer
 ): RuleEvaluationResult {
+  const followUps = answer.alcohol ? getFollowUpsForQuestion("q4") : [];
+
   if (!answer.alcohol) {
     return { planFilter: "Day1" };
   }
@@ -209,13 +216,13 @@ export function evaluateQ4Rules(
   const drinksPerWeek = answer.drinksPerWeek ?? 0;
 
   if (drinksPerWeek < ALCOHOL_THRESHOLDS.LOW) {
-    return { planFilter: "Day1" };
+    return { planFilter: "Day1", followUps };
   }
   if (
     drinksPerWeek >= ALCOHOL_THRESHOLDS.LOW &&
     drinksPerWeek <= ALCOHOL_THRESHOLDS.MODERATE
   ) {
-    return { planFilter: "Day1+" };
+    return { planFilter: "Day1+", followUps };
   }
   if (
     drinksPerWeek >= ALCOHOL_THRESHOLDS.HIGH &&
@@ -223,18 +230,18 @@ export function evaluateQ4Rules(
   ) {
     // CHECK If YES to Q18 for Severe Anxiety Guaranteed+ OR If Yes to Q18 for Moderate Anxiety Deferred+ OTHERWISE : Signature
     if (hasSevereMentalHealth(state)) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
     if (hasModerateMentalHealth(state)) {
-      return { planFilter: "Deferred+" };
+      return { planFilter: "Deferred+", followUps };
     }
-    return { planFilter: "Signature" };
+    return { planFilter: "Signature", followUps };
   }
   if (drinksPerWeek > ALCOHOL_THRESHOLDS.VERY_HIGH) {
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
-  return { planFilter: "Day1" };
+  return { planFilter: "Day1", followUps };
 }
 
 /**
@@ -299,6 +306,10 @@ export function evaluateQ6Rules(
   state: QuestionnaireClientState,
   answer: Q6Answer
 ): RuleEvaluationResult {
+  const followUps = answer.illicitDrugs
+    ? getFollowUpsForQuestion("q6")
+    : [];
+
   if (!answer.illicitDrugs) {
     return { planFilter: "Day1" };
   }
@@ -332,7 +343,7 @@ export function evaluateQ6Rules(
           : DECLINE_REASONS.Q6_WITH_ALCOHOL,
       };
     }
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
   // 2-5 years
@@ -341,9 +352,9 @@ export function evaluateQ6Rules(
     lastUseYears < YEARS_THRESHOLDS.Q6_DRUG_USE.SIGNATURE
   ) {
     if (hasMentalHealth || alcohol21Plus) {
-      return { planFilter: "Deferred+" };
+      return { planFilter: "Deferred+", followUps };
     }
-    return { planFilter: "Signature" };
+    return { planFilter: "Signature", followUps };
   }
 
   // 5-10 years
@@ -354,18 +365,18 @@ export function evaluateQ6Rules(
     if (answer.onlyExperimental === true) {
       const totalUses = answer.totalUses ?? 0;
       if (totalUses === 1) {
-        return { planFilter: "Day1" };
+        return { planFilter: "Day1", followUps };
       }
-      return { planFilter: "Day1+" };
+      return { planFilter: "Day1+", followUps };
     }
     if (hasMentalHealth || alcohol21Plus) {
-      return { planFilter: "Signature" };
+      return { planFilter: "Signature", followUps };
     }
-    return { planFilter: "Day1+" };
+    return { planFilter: "Day1+", followUps };
   }
 
   // >= 10 years
-  return { planFilter: "Day1" };
+  return { planFilter: "Day1", followUps };
 }
 
 /**
@@ -441,27 +452,29 @@ export function evaluateQ8Rules(
   state: QuestionnaireClientState,
   answer: Q8Answer
 ): RuleEvaluationResult {
+  const followUps = answer.dui ? getFollowUpsForQuestion("q8") : [];
+
   if (!answer.dui) {
     return { planFilter: "Day1" };
   }
 
   // CHECK If age >71 > Guaranteed+
   if (isAgeGreaterThanOrEqual(state, AGE_THRESHOLDS.DUI_71 + 1)) {
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
   // CHECK combination rules in Q18
   // If Question 8 answered yes or alcohol quantity 21 and over > Guaranteed+
   if (checkQ8OrAlcohol21Plus(state)) {
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
   // Otherwise: Have you had 2 or more DUIs?
   if (answer.multipleDUIs === true) {
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
-  return { planFilter: "Day1+" };
+  return { planFilter: "Day1+", followUps };
 }
 
 /**
@@ -526,6 +539,10 @@ export function evaluateQ11Rules(
   state: QuestionnaireClientState,
   answer: Q11Answer
 ): RuleEvaluationResult {
+  const followUps = answer.heartDisease
+    ? getFollowUpsForQuestion("q11")
+    : [];
+
   if (!answer.heartDisease) {
     return { planFilter: "Day1" };
   }
@@ -544,9 +561,9 @@ export function evaluateQ11Rules(
   if (answer.stable !== true) {
     // If NO > Deferred+ CHECK if smoker Guaranteed+
     if (isSmoker(state)) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
-    return { planFilter: "Deferred+" };
+    return { planFilter: "Deferred+", followUps };
   }
 
   // If YES > When were you diagnosed?
@@ -556,9 +573,9 @@ export function evaluateQ11Rules(
   // <= 3 years
   if (diagnosedYears <= YEARS_THRESHOLDS.Q11_DIAGNOSIS.DEFERRED_PLUS) {
     if (age < AGE_THRESHOLDS.NEUROMUSCULAR_40 || isSmoker(state)) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
-    return { planFilter: "Deferred+" };
+    return { planFilter: "Deferred+", followUps };
   }
 
   // > 3 years
@@ -568,24 +585,24 @@ export function evaluateQ11Rules(
   if (lastFollowUpYears < YEARS_THRESHOLDS.Q11_DIAGNOSIS.FOLLOW_UP) {
     if (bmi < BMI_CONDITION_THRESHOLDS.Q11_SIGNATURE) {
       if (age < AGE_THRESHOLDS.NEUROMUSCULAR_40 || isSmoker(state)) {
-        return { planFilter: "Deferred+" };
+        return { planFilter: "Deferred+", followUps };
       }
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
     if (age < AGE_THRESHOLDS.NEUROMUSCULAR_40 || isSmoker(state)) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
   // >= 2 years ago
   if (bmi < BMI_CONDITION_THRESHOLDS.Q11_SIGNATURE) {
     if (age < AGE_THRESHOLDS.NEUROMUSCULAR_40 || isSmoker(state)) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
-    return { planFilter: "Deferred+" };
+    return { planFilter: "Deferred+", followUps };
   }
-  return { planFilter: "Guaranteed+" };
+  return { planFilter: "Guaranteed+", followUps };
 }
 
 /**
@@ -596,6 +613,8 @@ export function evaluateQ12Rules(
   state: QuestionnaireClientState,
   answer: Q12Answer
 ): RuleEvaluationResult {
+  const followUps = answer.diabetes ? getFollowUpsForQuestion("q12") : [];
+
   if (!answer.diabetes) {
     return { planFilter: "Day1" };
   }
@@ -610,19 +629,19 @@ export function evaluateQ12Rules(
   if (answer.type1 === true) {
     // CHECK If BMI >40 OR YES TO CAD Q11 (CAD) > Guaranteed+
     if (bmi > BMI_CONDITION_THRESHOLDS.Q12_DECLINE || hasCADCondition) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
 
     // Otherwise: Have you ever had complications?
     if (answer.complications === true) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
 
     // Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more?
     if ((answer.hba1c ?? 0) >= 7.5) {
-      return { planFilter: "Deferred+" };
+      return { planFilter: "Deferred+", followUps };
     }
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
   // Female: Gestational Diabetes
@@ -633,14 +652,14 @@ export function evaluateQ12Rules(
   ) {
     // CHECK If BMI >40 OR YES TO CAD Q11 (CAD) > Guaranteed+ GO TO NEXT QUESTION
     if (bmi > BMI_CONDITION_THRESHOLDS.Q12_DECLINE || hasCADCondition) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
 
     // OTHERWISE > Is your Gestational Diabetes currently under good control with HbA1c or A1C result of 7.5% or less?
     if ((answer.hba1c ?? 0) <= 7.5) {
-      return { planFilter: "Signature" };
+      return { planFilter: "Signature", followUps };
     }
-    return { planFilter: "Deferred+" };
+    return { planFilter: "Deferred+", followUps };
   }
 
   // Are you currently taking or have you been prescribed any medication to treat your diabetes?
@@ -651,12 +670,12 @@ export function evaluateQ12Rules(
         age <= AGE_THRESHOLDS.DIABETES_24) ||
       hasCADCondition
     ) {
-      return { planFilter: "Deferred+" };
+      return { planFilter: "Deferred+", followUps };
     }
 
     // CHECK BMI >40 > Guaranteed+ GO TO NEXT QUESTION
     if (bmi > BMI_CONDITION_THRESHOLDS.Q12_DECLINE) {
-      return { planFilter: "Guaranteed+" };
+      return { planFilter: "Guaranteed+", followUps };
     }
 
     // OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more?
@@ -666,26 +685,26 @@ export function evaluateQ12Rules(
         bmi >= BMI_CONDITION_THRESHOLDS.Q12_DEFERRED.min &&
         bmi <= BMI_CONDITION_THRESHOLDS.Q12_DEFERRED.max
       ) {
-        return { planFilter: "Deferred+" };
+        return { planFilter: "Deferred+", followUps };
       }
       if (
         bmi >= BMI_CONDITION_THRESHOLDS.Q12_SIGNATURE.min &&
         bmi <= BMI_CONDITION_THRESHOLDS.Q12_SIGNATURE.max
       ) {
-        return { planFilter: "Signature" };
+        return { planFilter: "Signature", followUps };
       }
       if (
         bmi >= BMI_CONDITION_THRESHOLDS.Q12_DAY1_PLUS.min &&
         bmi <= BMI_CONDITION_THRESHOLDS.Q12_DAY1_PLUS.max
       ) {
-        return { planFilter: "Day1+" };
+        return { planFilter: "Day1+", followUps };
       }
-      return { planFilter: "Deferred+" };
+      return { planFilter: "Deferred+", followUps };
     }
-    return { planFilter: "Day1+" };
+    return { planFilter: "Day1+", followUps };
   }
 
-  return { planFilter: "Day1" };
+  return { planFilter: "Day1", followUps };
 }
 
 /**
@@ -779,15 +798,21 @@ export function evaluateQ16Rules(
   _state: QuestionnaireClientState,
   answer: Q16Answer
 ): RuleEvaluationResult {
+  const hasGenitourinaryHistory =
+    answer.everDiagnosed === true || answer.diagnosedLast2Years === true;
+  const followUps = hasGenitourinaryHistory
+    ? getFollowUpsForQuestion("q16")
+    : [];
+
   if (answer.everDiagnosed) {
-    return { planFilter: "Deferred+" };
+    return { planFilter: "Deferred+", followUps };
   }
 
   if (answer.diagnosedLast2Years) {
     if (answer.followUpNormal === true) {
-      return { planFilter: "Day1+" };
+      return { planFilter: "Day1+", followUps };
     }
-    return { planFilter: "Deferred+" };
+    return { planFilter: "Deferred+", followUps };
   }
 
   return { planFilter: "Day1" };
@@ -866,19 +891,25 @@ export function evaluateQ18Rules(
   state: QuestionnaireClientState,
   answer: Q18Answer
 ): RuleEvaluationResult {
+  const shouldQueueFollowUps =
+    answer.severeMentalHealth === true || answer.moderateMentalHealth === true;
+  const followUps = shouldQueueFollowUps
+    ? getFollowUpsForQuestion("q18")
+    : [];
+
   // CHECK If Question 6 answered Yes but no to #8 or alcohol quantity 21 and over - combination rule in question 6 applies.
   // If Question 8 answered yes or alcohol quantity 21 and over > Guaranteed+
   if (checkQ6CombinationRule(state) || checkQ8OrAlcohol21Plus(state)) {
-    return { planFilter: "Guaranteed+" };
+    return { planFilter: "Guaranteed+", followUps };
   }
 
   // Severe mental health
   if (answer.severeMentalHealth === true) {
     // Are you currently prescribed 3 or more medications to control your symptoms?
     if ((answer.medicationsCount ?? 0) >= 3) {
-      return { planFilter: "Deferred+" };
+      return { planFilter: "Deferred+", followUps };
     }
-    return { planFilter: "Signature" };
+    return { planFilter: "Signature", followUps };
   }
 
   // Moderate mental health
@@ -886,12 +917,12 @@ export function evaluateQ18Rules(
     // CHECK if Question 6 answered Yes but no to #8 or alcohol quantity 21 and over - combination rule in question 6 applies.
     // If Question 8 answered yes or alcohol quantity 21 and over > Deferred +
     if (checkQ6CombinationRule(state) || checkQ8OrAlcohol21Plus(state)) {
-      return { planFilter: "Deferred+" };
+      return { planFilter: "Deferred+", followUps };
     }
-    return { planFilter: "Day1+" };
+    return { planFilter: "Day1+", followUps };
   }
 
-  return { planFilter: "Day1" };
+  return { planFilter: "Day1", followUps };
 }
 
 /**
@@ -1185,6 +1216,9 @@ export function applyRuleResult(
     newState.declined = true;
     newState.declineReason = result.declineReason;
     newState.eligiblePlans = [];
+    newState.followUpQueue = [];
+    newState.currentPlan = "DECLINE";
+    newState.recommendedPlan = "DECLINE";
     newState.completed = true;
     newState.completedAt = new Date().toISOString();
     return newState;
@@ -1198,10 +1232,15 @@ export function applyRuleResult(
     );
   }
 
+  // Queue follow-up questions
+  if (result.followUps && result.followUps.length > 0) {
+    newState = enqueueFollowUpQuestions(newState, result.followUps);
+  }
+
   // Apply state updates
   if (result.updateState) {
     newState = { ...newState, ...result.updateState };
   }
 
-  return newState;
+  return updateRecommendedPlan(newState);
 }

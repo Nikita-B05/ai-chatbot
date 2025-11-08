@@ -1,12 +1,13 @@
 // lib/questionnaire/types.ts
 
 export type PlanTier =
-  | "DECLINE"
   | "Guaranteed+"
   | "Deferred+"
   | "Signature"
   | "Day1+"
   | "Day1";
+
+export type PlanOutcome = PlanTier | "DECLINE";
 
 export type RateType = "SMOKER" | "NON_SMOKER";
 export type Gender = "male" | "female";
@@ -212,7 +213,8 @@ export interface QuestionnaireClientState {
 
   // Eligibility tracking
   eligiblePlans: PlanTier[];
-  currentPlan?: PlanTier;
+  currentPlan?: PlanOutcome;
+  recommendedPlan?: PlanOutcome;
   declined: boolean;
   declineReason?: string;
 
@@ -220,6 +222,7 @@ export interface QuestionnaireClientState {
   questionsAsked: string[]; // ['gender', 'q1', 'q2', ...]
   questionsAnswered: string[]; // ['gender', 'q1', ...]
   currentQuestion?: string; // 'q2', 'q3', etc.
+  followUpQueue: string[];
   completed: boolean;
 
   // Metadata
@@ -251,4 +254,5 @@ export interface RuleEvaluationResult {
   decline?: boolean;
   declineReason?: string;
   updateState?: Partial<QuestionnaireClientState>;
+  followUps?: string[];
 }

@@ -1,4 +1,4 @@
-import type { PlanTier } from "./types";
+import type { PlanOutcome, PlanTier } from "./types";
 
 // Plan Tiers in priority order (lowest to highest)
 export const PLAN_TIERS: PlanTier[] = [
@@ -9,13 +9,13 @@ export const PLAN_TIERS: PlanTier[] = [
   "Guaranteed+",
 ];
 
-export const PLAN_PRIORITY: Record<PlanTier, number> = {
-  "DECLINE": 0,
+export const PLAN_PRIORITY: Record<PlanOutcome, number> = {
   "Day1": 1,
   "Day1+": 2,
   "Signature": 3,
   "Deferred+": 4,
   "Guaranteed+": 5,
+  "DECLINE": 6,
 };
 
 // Mandatory questions that must be asked first
@@ -41,6 +41,36 @@ export const QUESTION_DEPENDENCIES: Record<string, string[]> = {
   q19: ["q2"], // Q19 (digestive) - "CHECK If BMI < 18" requires BMI from Q2 (line 214)
   q21: ["q18"], // Q21 (neuromuscular) - "CHECK if >Signature for #18" (line 225)
   q22: ["q12", "q16", "q2"], // Q22 (arthritis) - "if YES to #12, #16, or If BMI >43" (line 231)
+};
+
+// Worst-case plan outcome (or decline) each question can trigger
+export const QUESTION_WORST_OUTCOME: Record<string, PlanOutcome | null> = {
+  gender: null,
+  q1: null,
+  q2: "Guaranteed+",
+  q3: "Deferred+",
+  q4: "Guaranteed+",
+  q5: "Guaranteed+",
+  q6: "DECLINE",
+  q7: "DECLINE",
+  q8: "Guaranteed+",
+  q9: "DECLINE",
+  q10: "Guaranteed+",
+  q11: "DECLINE",
+  q12: "Guaranteed+",
+  q13: "Deferred+",
+  q14: "Guaranteed+",
+  q15: "Guaranteed+",
+  q16: "Deferred+",
+  q17: "Guaranteed+",
+  q18: "Guaranteed+",
+  q19: "Guaranteed+",
+  q20: "Signature",
+  q21: "Guaranteed+",
+  q22: "Guaranteed+",
+  q23: "Guaranteed+",
+  q24: "Deferred+",
+  q25: "Guaranteed+",
 };
 
 // Decline reasons mapped to question IDs
