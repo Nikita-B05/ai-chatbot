@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { titlePrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
+import { withRetryAndFallback } from "@/lib/ai/retry-with-fallback";
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getChatById,
@@ -25,12 +26,16 @@ export async function generateTitleFromUserMessage({
 }: {
   message: UIMessage;
 }) {
-  const { text: title } = await generateText({
-    model: myProvider.languageModel("title-model"),
-    system: titlePrompt,
-    prompt: getTextFromMessage(message),
-    maxRetries: 5,
-  });
+  const { text: title } = await withRetryAndFallback(
+    "title-model",
+    async (model, maxRetries) =>
+      generateText({
+        model,
+        system: titlePrompt,
+        prompt: getTextFromMessage(message),
+        maxRetries,
+      })
+  );
 
   return title;
 }

@@ -27,17 +27,20 @@ export const MANDATORY_QUESTIONS = [
 
 // Question dependencies - questions that require other questions to be answered first
 export const QUESTION_DEPENDENCIES: Record<string, string[]> = {
-  q4: ["q18"], // Q4 (alcohol) - "CHECK If YES to Q18 AND 21-28 drinks/week for (Severe Anxiety OR Moderate Anxiety)" (line 36)
-  q6: ["q18", "q4"], // Q6 (illicit drugs) - "CHECK If YES to (1-2 years OR 2-5 years OR 5-10 years) and to Q18 OR IF Q4" (lines 56, 57, 63)
+  // Q4 (alcohol) - Can be asked independently, but if 21-28 drinks/week, judgment deferred until Q18 is answered
+  // q4: removed q18 dependency - Q4 should be asked early, rule evaluation handles Q18 check when needed
+  // Q6 (illicit drugs) - Can be asked independently, but checks Q18 and Q4 for combination rules
+  q6: ["q4"], // Q6 depends on Q4 for alcohol quantity check (lines 56, 57, 63), but Q18 check is handled in rule evaluation
   q7: ["q4", "q6"], // Q7 (treatment) - "CHECK Q4 If YES AND YES to Treatment for alcohol consumption only" and "CHECK Q6 If YES AND NO to Treatment for alcohol consumption only" (lines 68, 74)
-  q8: ["q18"], // Q8 (DUI) - "CHECK combination rules in Q18" (line 83)
+  // Q8 (DUI) - Can be asked independently, but if YES, judgment deferred until Q18 is answered for combination rules
+  // q8: removed q18 dependency - Q8 should be asked early, rule evaluation handles Q18 check when needed
   q11: ["q2"], // Q11 (heart disease) - "CHECK If BMI >= 44.0" requires BMI from Q2 (line 104)
   q12: ["q11", "q2"], // Q12 (diabetes) - "CHECK If YES TO Q11 (CAD)" and BMI checks (lines 116, 121, 126, 132, 142, 146)
   q15: ["q11"], // Q15 (respiratory) - "CHECK If YES to Q11 (CAD)" (lines 160, 168, 169)
   q17: ["q18"], // Q17 (neurological) - "CHECK If YES TO Q18" (lines 188, 190, 193)
   // Q18 depends on Q4, Q6, Q8 for evaluation (checks "alcohol quantity 21 and over" from Q4)
   // but Q18 can be asked independently - rules will re-evaluate after dependencies are answered
-  q18: ["q6", "q8", "q4"], // Q18 (mental health) - checks Q6, Q8, and "alcohol quantity 21 and over" from Q4 (lines 201, 209)
+  // q18: removed dependencies - Q18 should be asked independently, rule evaluation handles Q4/Q6/Q8 checks when needed
   q19: ["q2"], // Q19 (digestive) - "CHECK If BMI < 18" requires BMI from Q2 (line 214)
   q21: ["q18"], // Q21 (neuromuscular) - "CHECK if >Signature for #18" (line 225)
   q22: ["q12", "q16", "q2"], // Q22 (arthritis) - "if YES to #12, #16, or If BMI >43" (line 231)
