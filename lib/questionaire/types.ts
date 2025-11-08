@@ -215,6 +215,7 @@ export interface QuestionnaireClientState {
   eligiblePlans: PlanTier[];
   currentPlan?: PlanOutcome;
   recommendedPlan?: PlanOutcome;
+  planFloor?: PlanOutcome;
   declined: boolean;
   declineReason?: string;
 
@@ -255,4 +256,5 @@ export interface RuleEvaluationResult {
   declineReason?: string;
   updateState?: Partial<QuestionnaireClientState>;
   followUps?: string[];
+  planFloorUpdate?: PlanOutcome;
 }

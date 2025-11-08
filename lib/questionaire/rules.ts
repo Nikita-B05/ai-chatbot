@@ -12,6 +12,7 @@ import {
 import {
   enqueueFollowUpQuestions,
   filterPlansByMinimumTier,
+  updatePlanFloor,
   updateRecommendedPlan,
 } from "./state";
 import { getFollowUpsForQuestion } from "./questions";
@@ -1219,6 +1220,7 @@ export function applyRuleResult(
     newState.followUpQueue = [];
     newState.currentPlan = "DECLINE";
     newState.recommendedPlan = "DECLINE";
+    newState.planFloor = "DECLINE";
     newState.completed = true;
     newState.completedAt = new Date().toISOString();
     return newState;
@@ -1230,11 +1232,16 @@ export function applyRuleResult(
       newState.eligiblePlans,
       result.planFilter
     );
+    newState = updatePlanFloor(newState, result.planFilter);
   }
 
   // Queue follow-up questions
   if (result.followUps && result.followUps.length > 0) {
     newState = enqueueFollowUpQuestions(newState, result.followUps);
+  }
+
+  if (result.planFloorUpdate) {
+    newState = updatePlanFloor(newState, result.planFloorUpdate);
   }
 
   // Apply state updates

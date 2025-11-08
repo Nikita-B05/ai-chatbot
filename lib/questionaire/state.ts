@@ -16,6 +16,7 @@ export function createInitialState(): QuestionnaireClientState {
     answers: {},
     eligiblePlans: [...PLAN_TIERS],
     recommendedPlan: getBestEligiblePlan(PLAN_TIERS),
+    planFloor: "Day1",
     declined: false,
     questionsAsked: [],
     questionsAnswered: [],
@@ -80,6 +81,10 @@ export function getQuestionPlanImpact(questionId: string): PlanOutcome | null {
 function getEffectiveBaselinePlan(
   state: QuestionnaireClientState
 ): PlanOutcome | undefined {
+  if (state.planFloor) {
+    return state.planFloor;
+  }
+
   if (state.declined) {
     return "DECLINE";
   }
@@ -266,12 +271,14 @@ export function updateBMIInState(
 export function markAsCompleted(
   state: QuestionnaireClientState
 ): QuestionnaireClientState {
+  const bestPlan = getBestEligiblePlan(state.eligiblePlans);
   return {
     ...state,
     completed: true,
     completedAt: new Date().toISOString(),
-    currentPlan: getBestEligiblePlan(state.eligiblePlans),
-    recommendedPlan: getBestEligiblePlan(state.eligiblePlans),
+    currentPlan: state.planFloor ?? bestPlan,
+    recommendedPlan: bestPlan,
+    planFloor: state.planFloor ?? bestPlan,
   };
 }
 
@@ -288,6 +295,7 @@ export function applyDecline(
     declineReason: reason,
     eligiblePlans: [],
     recommendedPlan: "DECLINE",
+    planFloor: "DECLINE",
     completed: true,
     completedAt: new Date().toISOString(),
   };
@@ -382,6 +390,26 @@ export function updateRecommendedPlan(
   return {
     ...state,
     recommendedPlan,
+  };
+}
+
+export function updatePlanFloor(
+  state: QuestionnaireClientState,
+  newMinimum?: PlanOutcome
+): QuestionnaireClientState {
+  if (!newMinimum) {
+    return state;
+  }
+
+  const currentFloor = state.planFloor ?? "Day1";
+
+  if (PLAN_PRIORITY[newMinimum] <= PLAN_PRIORITY[currentFloor]) {
+    return state;
+  }
+
+  return {
+    ...state,
+    planFloor: newMinimum,
   };
 }
 

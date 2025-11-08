@@ -6,15 +6,20 @@ import {
   calculateBMI,
   enqueueFollowUpQuestions,
   getAvailableQuestions,
+  getBestEligiblePlan,
   getNextFollowUpQuestion,
+  markAsCompleted,
   updateBMIInState,
   updateStateWithAnswer,
 } from "./state";
+import { PLAN_PRIORITY } from "./constants";
+import { recomputeEligibility } from "./recompute";
 import type {
   Gender,
   Q1Answer,
   Q2Answer,
   Q5Answer,
+  PlanOutcome,
   QuestionnaireClientState,
 } from "./types";
 
@@ -60,6 +65,7 @@ export const updateQuestionnaireState = ({
     }),
     execute: async (input) => {
       let newState: QuestionnaireClientState = { ...currentState };
+      const previousPlan = getPlanOutcome(newState);
 
       // Update demographics
       if (input.updateDemographics) {
@@ -181,10 +187,34 @@ export const updateQuestionnaireState = ({
         }
       }
 
-      // Determine available questions and next question
-      const availableQuestions = getAvailableQuestions(newState);
+      // Recompute eligibility after all updates to ensure plan accuracy
+      newState = recomputeEligibility(newState);
 
-      if (input.setCurrentQuestion) {
+      const currentPlan = getPlanOutcome(newState);
+      let planChangeMessage: string | undefined;
+      if (
+        previousPlan &&
+        currentPlan &&
+        PLAN_PRIORITY[currentPlan] > PLAN_PRIORITY[previousPlan]
+      ) {
+        planChangeMessage = `Plan adjusted from ${previousPlan} to ${currentPlan}.`;
+      }
+
+      // Determine available questions and next steps
+      let availableQuestions = getAvailableQuestions(newState);
+
+      if (
+        newState.planFloor === "Guaranteed+" &&
+        !newState.declined &&
+        availableQuestions.length === 0
+      ) {
+        newState = markAsCompleted(newState);
+      }
+
+      if (newState.completed) {
+        availableQuestions = [];
+        newState.currentQuestion = undefined;
+      } else if (input.setCurrentQuestion) {
         newState.currentQuestion = input.setCurrentQuestion;
       } else if (newState.declined) {
         newState.currentQuestion = undefined;
@@ -218,6 +248,7 @@ export const updateQuestionnaireState = ({
           eligiblePlans: newState.eligiblePlans,
           currentPlan: newState.currentPlan,
           recommendedPlan: newState.recommendedPlan,
+          planFloor: newState.planFloor,
           declined: newState.declined,
           declineReason: newState.declineReason,
           questionsAnswered: newState.questionsAnswered,
@@ -227,14 +258,35 @@ export const updateQuestionnaireState = ({
           followUpQueue: newState.followUpQueue,
         },
         availableQuestions,
-        message: input.answerQuestion
+        planChange:
+          previousPlan && currentPlan && planChangeMessage
+            ? { from: previousPlan, to: currentPlan }
+            : undefined,
+        message:
+          (input.answerQuestion
           ? `Question ${input.answerQuestion.questionId} answered successfully.`
           : input.updateDemographics
             ? "Demographics updated successfully."
             : input.addMentionedCondition
               ? `Added ${input.addMentionedCondition.length} condition(s) to mentioned conditions.`
-              : "State updated successfully.",
+              : "State updated successfully.") +
+          (planChangeMessage ? ` ${planChangeMessage}` : ""),
       };
     },
   });
+
+function getPlanOutcome(
+  state: QuestionnaireClientState
+): PlanOutcome | undefined {
+  if (state.declined) {
+    return "DECLINE";
+  }
+  if (state.planFloor) {
+    return state.planFloor;
+  }
+  if (state.recommendedPlan) {
+    return state.recommendedPlan as PlanOutcome;
+  }
+  return getBestEligiblePlan(state.eligiblePlans);
+}
 

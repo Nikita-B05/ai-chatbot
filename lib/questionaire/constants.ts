@@ -1,6 +1,6 @@
 import type { PlanOutcome, PlanTier } from "./types";
 
-// Plan Tiers in priority order (lowest to highest)
+// Plan Tiers in priority order (best to worst)
 export const PLAN_TIERS: PlanTier[] = [
   "Day1",
   "Day1+",
@@ -72,6 +72,10 @@ export const QUESTION_WORST_OUTCOME: Record<string, PlanOutcome | null> = {
   q24: "Deferred+",
   q25: "Guaranteed+",
 };
+
+export const DECLINE_QUESTION_IDS = Object.entries(QUESTION_WORST_OUTCOME)
+  .filter(([, outcome]) => outcome === "DECLINE")
+  .map(([questionId]) => questionId);
 
 // Decline reasons mapped to question IDs
 export const DECLINE_REASONS = {

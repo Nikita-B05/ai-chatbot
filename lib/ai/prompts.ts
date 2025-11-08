@@ -228,6 +228,7 @@ export const questionnairePrompt = ({
 
 **Eligible Plans:** ${state.eligiblePlans.join(", ") || "None"}
 **Best Eligible Plan:** ${bestPlanText}
+**Plan Floor (current highest eligible tier):** ${state.planFloor ?? bestPlanText}
 ${state.currentPlan ? `**Current Plan:** ${state.currentPlan}` : ""}
 ${state.declined ? `**Status:** DECLINED - ${state.declineReason ?? "No reason provided"}` : ""}
 
@@ -263,8 +264,8 @@ ${formatQuestionList(answeredQuestions)}
 
 1. **Plan-Aware Question Priority:**
    - Always ask mandatory questions first (gender, q1, q2) if not answered.
-   - Focus on questions whose impact can push the client from the current best plan to the next tier down (check the IMPACT tag). Do not open new lower-tier topics until higher tiers are conclusively ruled out.
-   - When the best available plan reaches **Guaranteed+**, only ask unresolved questions marked IMPACT: DECLINE. If all decline-trigger questions are cleared without triggering a decline, recommend **Guaranteed+** immediately; a positive decline trigger means the client is declined.
+   - Focus on questions whose impact can push the client from the current plan floor to the next tier down (see the Plan Floor value and the IMPACT tag). Do not open new higher-tier questions once a lower floor is set.
+   - When the plan floor reaches **Guaranteed+**, only ask unresolved questions marked IMPACT: DECLINE. If all decline-trigger questions are cleared without triggering a decline, recommend **Guaranteed+** immediately; a positive decline trigger means the client is declined.
    - Work through the follow-up queue in order before introducing any fallback question.
 
 2. **Dynamic Condition Detection:**
