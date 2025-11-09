@@ -408,13 +408,13 @@ export function evaluateQ7Rules(
     if (lastTreatmentYears < YEARS_THRESHOLDS.Q7_TREATMENT.GUARANTEED_PLUS) {
       return { planFilter: "Guaranteed+" };
     }
-    if (lastTreatmentYears < YEARS_THRESHOLDS.Q7_TREATMENT.DEFERRED_PLUS) {
+    if (lastTreatmentYears <= YEARS_THRESHOLDS.Q7_TREATMENT.DEFERRED_PLUS) {
       return { planFilter: "Deferred+" };
     }
-    if (lastTreatmentYears < YEARS_THRESHOLDS.Q7_TREATMENT.SIGNATURE) {
+    if (lastTreatmentYears <= YEARS_THRESHOLDS.Q7_TREATMENT.SIGNATURE) {
       return { planFilter: "Signature" };
     }
-    if (lastTreatmentYears < YEARS_THRESHOLDS.Q7_TREATMENT.DAY1_PLUS) {
+    if (lastTreatmentYears <= YEARS_THRESHOLDS.Q7_TREATMENT.DAY1_PLUS) {
       return { planFilter: "Day1+" };
     }
     return { planFilter: "Day1" };

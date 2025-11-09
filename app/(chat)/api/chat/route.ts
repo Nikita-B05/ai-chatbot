@@ -50,6 +50,7 @@ import {
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import { getAvailableQuestionsForLLM } from "@/lib/questionaire/router";
+import { applyAutoIntakeFromMessage } from "@/lib/questionaire/intake";
 import { calculateBMI, createInitialState } from "@/lib/questionaire/state";
 import { updateQuestionnaireState } from "@/lib/questionaire/tool";
 import type { QuestionnaireClientState } from "@/lib/questionaire/types";
@@ -67,6 +68,24 @@ import { type PostRequestBody, postRequestBodySchema } from "./schema";
 export const maxDuration = 60;
 
 let globalStreamContext: ResumableStreamContext | null = null;
+
+const shouldLogQuestionnaireDebug =
+  process.env.QUESTIONNAIRE_DEBUG === "true" ||
+  process.env.NODE_ENV !== "production";
+
+function logQuestionnaireDebug(label: string, payload: unknown) {
+  if (!shouldLogQuestionnaireDebug) {
+    return;
+  }
+
+  try {
+    console.log(
+      `\n[Questionnaire Debug] ${label}\n${JSON.stringify(payload, null, 2)}`
+    );
+  } catch (error) {
+    console.log(`[Questionnaire Debug] ${label}`, payload, error);
+  }
+}
 
 const getTokenlensCatalog = cache(
   async (): Promise<ModelCatalog | undefined> => {
@@ -177,6 +196,12 @@ export async function POST(request: Request) {
       isQuestionnaireMode = chat.questionaireMode ?? false;
       if (isQuestionnaireMode) {
         questionnaireState = chat.clientState ?? createInitialState();
+        if (questionnaireState) {
+          logQuestionnaireDebug("Loaded questionnaire state", {
+            chatId: id,
+            state: questionnaireState,
+          });
+        }
       }
     } else {
       const title = await generateTitleFromUserMessage({
@@ -192,11 +217,11 @@ export async function POST(request: Request) {
       // New chat - no need to fetch messages, it's empty
     }
 
+    const messageText = getTextFromMessage(message);
+
     // Detect if user wants to start an insurance questionnaire
     // Only check if not already in questionnaire mode and this is the first or second message
     if (!isQuestionnaireMode && messagesFromDb.length <= 1) {
-      const messageText = getTextFromMessage(message);
-
       // Quick keyword check first (faster, no API call)
       const insuranceKeywords = [
         "insurance",
@@ -293,6 +318,14 @@ export async function POST(request: Request) {
             });
             isQuestionnaireMode = true;
             questionnaireState = initialState;
+            logQuestionnaireDebug(
+              "Initialized questionnaire state from detection result",
+              {
+                chatId: id,
+                state: questionnaireState,
+                detection: detectionResult.object,
+              }
+            );
           }
         } catch (error) {
           // If detection fails but keyword matched, enable questionnaire mode anyway
@@ -308,7 +341,34 @@ export async function POST(request: Request) {
           });
           isQuestionnaireMode = true;
           questionnaireState = initialState;
+          logQuestionnaireDebug(
+            "Initialized questionnaire state via keyword fallback",
+            {
+              chatId: id,
+              state: questionnaireState,
+              error: error instanceof Error ? error.message : String(error),
+            }
+          );
         }
+      }
+    }
+
+    if (isQuestionnaireMode && questionnaireState) {
+      const intakeResult = applyAutoIntakeFromMessage(
+        questionnaireState,
+        messageText
+      );
+      questionnaireState = intakeResult.state;
+
+      if (
+        intakeResult.answeredQuestions.length > 0 ||
+        Object.keys(intakeResult.demographicsUpdated).length > 0
+      ) {
+        logQuestionnaireDebug("Applied auto-intake from user message", {
+          chatId: id,
+          answeredQuestions: intakeResult.answeredQuestions,
+          demographicsUpdated: intakeResult.demographicsUpdated,
+        });
       }
     }
 
@@ -375,16 +435,19 @@ export async function POST(request: Request) {
     const allTools = {
       getWeather,
     };
+    let availableQuestionsForLLM:
+      | ReturnType<typeof getAvailableQuestionsForLLM>
+      | undefined;
 
     if (isQuestionnaireMode && updatedQuestionnaireState) {
-      const availableQuestions = getAvailableQuestionsForLLM(
+      availableQuestionsForLLM = getAvailableQuestionsForLLM(
         updatedQuestionnaireState
       );
       systemPromptText = questionnairePrompt({
         selectedChatModel,
         requestHints,
         state: updatedQuestionnaireState,
-        availableQuestions,
+        availableQuestions: availableQuestionsForLLM,
       });
       activeTools = [
         "updateQuestionnaireState",
@@ -392,10 +455,43 @@ export async function POST(request: Request) {
         "updateDocument",
         "requestSuggestions",
       ];
+      logQuestionnaireDebug("Prepared questionnaire prompt context", {
+        chatId: id,
+        state: updatedQuestionnaireState,
+        availableQuestions: availableQuestionsForLLM,
+      });
     } else {
       systemPromptText = systemPrompt({ selectedChatModel, requestHints });
       activeTools = ["createDocument", "updateDocument", "requestSuggestions"];
     }
+
+    const modelMessages = convertToModelMessages(uiMessages);
+
+    logQuestionnaireDebug("LLM request payload", {
+      chatId: id,
+      mode: isQuestionnaireMode ? "questionnaire" : "standard",
+      systemPrompt: systemPromptText,
+      activeTools,
+      messages: modelMessages,
+      questionnaireState: updatedQuestionnaireState,
+      availableQuestions: availableQuestionsForLLM?.map(
+        ({
+          id: questionId,
+          available,
+          answered,
+          asked,
+          priority,
+          queuePosition,
+        }) => ({
+          id: questionId,
+          available,
+          answered,
+          asked,
+          priority,
+          queuePosition,
+        })
+      ),
+    });
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
@@ -414,6 +510,10 @@ export async function POST(request: Request) {
                   currentState: updatedQuestionnaireState,
                   onStateUpdate: (newState) => {
                     updatedQuestionnaireState = newState;
+                    logQuestionnaireDebug("Questionnaire state updated via tool", {
+                      chatId: id,
+                      state: newState,
+                    });
                   },
                 }),
               }
@@ -426,7 +526,7 @@ export async function POST(request: Request) {
           result = streamText({
             model: myProvider.languageModel(selectedChatModel),
             system: systemPromptText,
-            messages: convertToModelMessages(uiMessages),
+            messages: modelMessages,
             stopWhen: stepCountIs(5),
             experimental_activeTools: activeTools,
             experimental_transform: smoothStream({ chunking: "word" }),
@@ -500,7 +600,7 @@ export async function POST(request: Request) {
             result = streamText({
               model: myProvider.languageModel("fallback-model"),
               system: systemPromptText,
-              messages: convertToModelMessages(uiMessages),
+              messages: modelMessages,
               stopWhen: stepCountIs(5),
               experimental_activeTools: activeTools,
               experimental_transform: smoothStream({ chunking: "word" }),
@@ -576,6 +676,11 @@ export async function POST(request: Request) {
       onFinish: async ({ messages }) => {
         // Save assistant messages with state snapshots if in questionnaire mode
         if (isQuestionnaireMode && updatedQuestionnaireState) {
+          logQuestionnaireDebug("Persisting questionnaire state", {
+            chatId: id,
+            state: updatedQuestionnaireState,
+          });
+
           for (const currentMessage of messages) {
             await saveMessageWithStateSnapshot({
               message: {

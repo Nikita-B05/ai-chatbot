@@ -76,6 +76,12 @@ export const updateQuestionnaireState = ({
         }
         if (gender !== undefined) {
           newState.gender = gender as Gender;
+          if (!newState.questionsAnswered.includes("gender")) {
+            newState.questionsAnswered = [...newState.questionsAnswered, "gender"];
+          }
+          if (!newState.questionsAsked.includes("gender")) {
+            newState.questionsAsked = [...newState.questionsAsked, "gender"];
+          }
         }
         if (height !== undefined) {
           newState.height = height;

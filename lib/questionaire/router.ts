@@ -51,10 +51,12 @@ export function getAvailableQuestionsForLLM(
     (questionId) =>
       !mandatoryPending.has(questionId) && !queueIndexMap.has(questionId)
   );
-  const allQuestionIds = [
+  const allQuestionIds = Array.from(
+    new Set([
     ...MANDATORY_QUESTIONS,
     ...Array.from({ length: 25 }, (_, i) => `q${i + 1}`),
-  ];
+    ])
+  );
 
   return allQuestionIds.map((questionId) => {
     const description = getQuestionDescription(questionId);
