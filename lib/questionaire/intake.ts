@@ -387,36 +387,66 @@ function extractGender(message: string): Gender | undefined {
 }
 
 function extractHeight(message: string): number | undefined {
+  // Try imperial formats first: e.g., 5'11", 5' 11, 5 ft 11 in, 5 feet 11 inches
+  const feetInchesPattern =
+    /\b(\d{1,2})\s*(?:'|ft|feet)\s*(?:(\d{1,2})\s*(?:"|in|inches)?)?\b/i;
+  const feetInchesMatch = message.match(feetInchesPattern);
+  if (feetInchesMatch) {
+    const feet = Number.parseInt(feetInchesMatch[1] ?? "", 10);
+    const inches = Number.parseInt(feetInchesMatch[2] ?? "0", 10);
+    if (!Number.isNaN(feet) && !Number.isNaN(inches)) {
+      const totalInches = feet * 12 + inches;
+      const cm = Math.round(totalInches * 2.54);
+      if (cm >= 120 && cm <= 230) {
+        return cm;
+      }
+    }
+  }
+
+  // Inches only: e.g., 70 in, 70 inches
+  const inchesOnlyMatch = message.match(/\b(\d{2,3})\s*(?:in|inches)\b/i);
+  if (inchesOnlyMatch) {
+    const inchesOnly = Number.parseInt(inchesOnlyMatch[1] ?? "", 10);
+    if (!Number.isNaN(inchesOnly)) {
+      const cm = Math.round(inchesOnly * 2.54);
+      if (cm >= 120 && cm <= 230) {
+        return cm;
+      }
+    }
+  }
+
+  // Metric: e.g., 180 cm
   const match = message.match(/\b(\d{2,3})\s*(?:cm|centimet(?:er|re)s?)\b/);
-  if (!match) {
-    return undefined;
-  }
-
-  const height = Number.parseInt(match[1] ?? "", 10);
-  if (Number.isNaN(height)) {
-    return undefined;
-  }
-
-  if (height >= 120 && height <= 230) {
-    return height;
+  if (match) {
+    const height = Number.parseInt(match[1] ?? "", 10);
+    if (!Number.isNaN(height) && height >= 120 && height <= 230) {
+      return height;
+    }
   }
 
   return undefined;
 }
 
 function extractWeight(message: string): number | undefined {
+  // Pounds: e.g., 130 lbs, 180 lb, 200 pounds
+  const poundsMatch = message.match(/\b(\d{2,3})\s*(?:lb|lbs|pounds?)\b/i);
+  if (poundsMatch) {
+    const pounds = Number.parseInt(poundsMatch[1] ?? "", 10);
+    if (!Number.isNaN(pounds)) {
+      const kg = Math.round(pounds * 0.453592);
+      if (kg >= 35 && kg <= 250) {
+        return kg;
+      }
+    }
+  }
+
+  // Metric kg: e.g., 70 kg
   const match = message.match(/\b(\d{2,3})\s*(?:kg|kilograms?)\b/);
-  if (!match) {
-    return undefined;
-  }
-
-  const weight = Number.parseInt(match[1] ?? "", 10);
-  if (Number.isNaN(weight)) {
-    return undefined;
-  }
-
-  if (weight >= 35 && weight <= 250) {
-    return weight;
+  if (match) {
+    const weight = Number.parseInt(match[1] ?? "", 10);
+    if (!Number.isNaN(weight) && weight >= 35 && weight <= 250) {
+      return weight;
+    }
   }
 
   return undefined;

@@ -51,10 +51,11 @@ export function getAvailableQuestionsForLLM(
     (questionId) =>
       !mandatoryPending.has(questionId) && !queueIndexMap.has(questionId)
   );
+  // Include all defined questions (base and sub-questions) for LLM display
   const allQuestionIds = Array.from(
     new Set([
-    ...MANDATORY_QUESTIONS,
-    ...Array.from({ length: 25 }, (_, i) => `q${i + 1}`),
+      ...MANDATORY_QUESTIONS,
+      ...Object.keys(QUESTION_DESCRIPTIONS),
     ])
   );
 

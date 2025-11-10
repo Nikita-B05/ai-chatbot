@@ -21,6 +21,7 @@ import type {
   Q1Answer,
   Q2Answer,
   Q3Answer,
+  Q3cAnswer,
   Q4Answer,
   Q5Answer,
   Q6Answer,
@@ -46,6 +47,44 @@ import type {
   QuestionnaireClientState,
   RuleEvaluationResult,
 } from "./types";
+
+/**
+ * Coercion helpers for sub-question answers
+ */
+function asBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  return undefined;
+}
+
+/**
+ * Helper to patch nested parent question answer
+ */
+function patchParentAnswer(
+  state: QuestionnaireClientState,
+  parentId: keyof QuestionnaireClientState["answers"],
+  patch: Record<string, unknown>
+): RuleEvaluationResult {
+  return {
+    updateState: {
+      answers: {
+        ...state.answers,
+        [parentId]: {
+          ...(state.answers[parentId] as Record<string, unknown> | undefined),
+          ...patch,
+        },
+      } as QuestionnaireClientState["answers"],
+    },
+  };
+}
 
 /**
  * Helper function to check if Q18 has severe mental health condition
@@ -179,7 +218,7 @@ export function evaluateQ2Rules(
  * Evaluates rules for Q3 (Working)
  */
 export function evaluateQ3Rules(
-  _state: QuestionnaireClientState,
+  state: QuestionnaireClientState,
   answer: Q3Answer
 ): RuleEvaluationResult {
   if (!answer.working) {
@@ -187,7 +226,13 @@ export function evaluateQ3Rules(
     if (answer.institutionalized === true) {
       return { planFilter: "Guaranteed+" };
     }
-    return { planFilter: "Day1" };
+    if (answer.institutionalized === false) {
+      return { planFilter: "Day1" };
+    }
+    // Unknown institutionalization → ask Q3c before proceeding further in flow
+    // Do not adjust plan yet; the sub-question determines Day1 vs Guaranteed+
+    const alreadyAnswered = state.questionsAnswered.includes("q3c");
+    return { followUps: alreadyAnswered ? [] : ["q3c"] };
   }
 
   // Working - check occupation risk
@@ -198,6 +243,55 @@ export function evaluateQ3Rules(
     return { planFilter: "Signature" };
   }
   return { planFilter: "Day1" };
+}
+
+export function evaluateQ3cRules(
+  _state: QuestionnaireClientState,
+  answer: Q3cAnswer
+): RuleEvaluationResult {
+  if (answer.institutionalized === true) {
+    return { planFilter: "Guaranteed+" };
+  }
+  return { planFilter: "Day1" };
+}
+
+/**
+ * Q2 sub-questions
+ */
+export function evaluateQ2WeightLossRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const weightLoss = asBoolean(answer);
+  if (weightLoss === undefined) return {};
+  return patchParentAnswer(state, "q2", { weightLoss });
+}
+
+export function evaluateQ2PregnancyRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const pregnancy = asBoolean(answer);
+  if (pregnancy === undefined) return {};
+  return patchParentAnswer(state, "q2", { pregnancy });
+}
+
+export function evaluateQ2Birth6mRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const birthLast6Months = asBoolean(answer);
+  if (birthLast6Months === undefined) return {};
+  return patchParentAnswer(state, "q2", { birthLast6Months });
+}
+
+export function evaluateQ2PrePregWeightRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const prePregnancyWeight = asNumber(answer);
+  if (prePregnancyWeight === undefined) return {};
+  return patchParentAnswer(state, "q2", { prePregnancyWeight });
 }
 
 /**
@@ -243,6 +337,15 @@ export function evaluateQ4Rules(
   }
 
   return { planFilter: "Day1", followUps };
+}
+
+export function evaluateQ4qRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const drinksPerWeek = asNumber(answer);
+  if (drinksPerWeek === undefined) return {};
+  return patchParentAnswer(state, "q4", { drinksPerWeek });
 }
 
 /**
@@ -297,6 +400,24 @@ export function evaluateQ5Rules(
   }
 
   return { planFilter: "Day1", updateState };
+}
+
+export function evaluateQ5MixRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const mixedWithTobacco = asBoolean(answer);
+  if (mixedWithTobacco === undefined) return {};
+  return patchParentAnswer(state, "q5", { mixedWithTobacco });
+}
+
+export function evaluateQ5FreqRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const frequencyPerWeek = asNumber(answer);
+  if (frequencyPerWeek === undefined) return {};
+  return patchParentAnswer(state, "q5", { frequencyPerWeek });
 }
 
 /**
@@ -380,6 +501,33 @@ export function evaluateQ6Rules(
   return { planFilter: "Day1", followUps };
 }
 
+export function evaluateQ6WhenRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const lastUseYears = asNumber(answer);
+  if (lastUseYears === undefined) return {};
+  return patchParentAnswer(state, "q6", { lastUseYears });
+}
+
+export function evaluateQ6EcstasyRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const onlyExperimental = asBoolean(answer);
+  if (onlyExperimental === undefined) return {};
+  return patchParentAnswer(state, "q6", { onlyExperimental });
+}
+
+export function evaluateQ6HowManyRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const totalUses = asNumber(answer);
+  if (totalUses === undefined) return {};
+  return patchParentAnswer(state, "q6", { totalUses });
+}
+
 /**
  * Evaluates rules for Q7 (Treatment)
  * Checks Q4 and Q6
@@ -445,6 +593,24 @@ export function evaluateQ7Rules(
   return { planFilter: "Day1" };
 }
 
+export function evaluateQ7AlcRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const alcoholOnly = asBoolean(answer);
+  if (alcoholOnly === undefined) return {};
+  return patchParentAnswer(state, "q7", { alcoholOnly });
+}
+
+export function evaluateQ7YrsRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const lastTreatmentYears = asNumber(answer);
+  if (lastTreatmentYears === undefined) return {};
+  return patchParentAnswer(state, "q7", { lastTreatmentYears });
+}
+
 /**
  * Evaluates rules for Q8 (DUI)
  * Checks Q18 combination rules
@@ -476,6 +642,15 @@ export function evaluateQ8Rules(
   }
 
   return { planFilter: "Day1+", followUps };
+}
+
+export function evaluateQ8CountRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const multipleDUIs = asBoolean(answer);
+  if (multipleDUIs === undefined) return {};
+  return patchParentAnswer(state, "q8", { multipleDUIs });
 }
 
 /**
@@ -519,6 +694,33 @@ export function evaluateQ9Rules(
   return { planFilter: "Signature" };
 }
 
+export function evaluateQ9MultRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const multipleCharges = asBoolean(answer);
+  if (multipleCharges === undefined) return {};
+  return patchParentAnswer(state, "q9", { multipleCharges });
+}
+
+export function evaluateQ9IncRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const incarcerated6MonthsPlus = asBoolean(answer);
+  if (incarcerated6MonthsPlus === undefined) return {};
+  return patchParentAnswer(state, "q9", { incarcerated6MonthsPlus });
+}
+
+export function evaluateQ9YrsRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const sentenceCompletedYears = asNumber(answer);
+  if (sentenceCompletedYears === undefined) return {};
+  return patchParentAnswer(state, "q9", { sentenceCompletedYears });
+}
+
 /**
  * Evaluates rules for Q10 (Pending Symptoms/Tests)
  */
@@ -530,6 +732,15 @@ export function evaluateQ10Rules(
     return { planFilter: "Guaranteed+" };
   }
   return { planFilter: "Day1" };
+}
+
+export function evaluateQ10BRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const pendingTests = asBoolean(answer);
+  if (pendingTests === undefined) return {};
+  return patchParentAnswer(state, "q10", { pendingTests });
 }
 
 /**
@@ -604,6 +815,33 @@ export function evaluateQ11Rules(
     return { planFilter: "Deferred+", followUps };
   }
   return { planFilter: "Guaranteed+", followUps };
+}
+
+export function evaluateQ11StableRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const stable = asBoolean(answer);
+  if (stable === undefined) return {};
+  return patchParentAnswer(state, "q11", { stable });
+}
+
+export function evaluateQ11DxRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const diagnosedYears = asNumber(answer);
+  if (diagnosedYears === undefined) return {};
+  return patchParentAnswer(state, "q11", { diagnosedYears });
+}
+
+export function evaluateQ11FuRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const lastFollowUpYears = asNumber(answer);
+  if (lastFollowUpYears === undefined) return {};
+  return patchParentAnswer(state, "q11", { lastFollowUpYears });
 }
 
 /**
@@ -708,6 +946,51 @@ export function evaluateQ12Rules(
   return { planFilter: "Day1", followUps };
 }
 
+export function evaluateQ12Type1Rules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const type1 = asBoolean(answer);
+  if (type1 === undefined) return {};
+  return patchParentAnswer(state, "q12", { type1 });
+}
+
+export function evaluateQ12GestRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const gestational = asBoolean(answer);
+  if (gestational === undefined) return {};
+  return patchParentAnswer(state, "q12", { gestational });
+}
+
+export function evaluateQ12MedsRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const onMedication = asBoolean(answer);
+  if (onMedication === undefined) return {};
+  return patchParentAnswer(state, "q12", { onMedication });
+}
+
+export function evaluateQ12CompRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const complications = asBoolean(answer);
+  if (complications === undefined) return {};
+  return patchParentAnswer(state, "q12", { complications });
+}
+
+export function evaluateQ12Hba1cRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const hba1c = asNumber(answer);
+  if (hba1c === undefined) return {};
+  return patchParentAnswer(state, "q12", { hba1c });
+}
+
 /**
  * Evaluates rules for Q13 (Cancer)
  */
@@ -792,6 +1075,53 @@ export function evaluateQ15Rules(
   return { planFilter: "Day1" };
 }
 
+export function evaluateQ15O2Rules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const oxygenTherapy = asBoolean(answer);
+  if (oxygenTherapy === undefined) return {};
+  return patchParentAnswer(state, "q15", { oxygenTherapy });
+}
+
+export function evaluateQ15SleepRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const sleepApnea = asBoolean(answer);
+  if (sleepApnea === undefined) return {};
+  return patchParentAnswer(state, "q15", { sleepApnea });
+}
+
+export function evaluateQ15CpapRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const sleepApneaDailyTreatment = asBoolean(answer);
+  if (sleepApneaDailyTreatment === undefined) return {};
+  return patchParentAnswer(state, "q15", { sleepApneaDailyTreatment });
+}
+
+export function evaluateQ15AsthmaRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const asthma = asBoolean(answer);
+  if (asthma === undefined) return {};
+  return patchParentAnswer(state, "q15", { asthma });
+}
+
+export function evaluateQ15SevRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const severe = asBoolean(answer);
+  if (severe === undefined) return {};
+  return patchParentAnswer(state, "q15", {
+    asthmaSeverity: severe ? "severe" : "mild",
+  });
+}
+
 /**
  * Evaluates rules for Q16 (Genitourinary)
  */
@@ -817,6 +1147,24 @@ export function evaluateQ16Rules(
   }
 
   return { planFilter: "Day1" };
+}
+
+export function evaluateQ16RecentRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const diagnosedLast2Years = asBoolean(answer);
+  if (diagnosedLast2Years === undefined) return {};
+  return patchParentAnswer(state, "q16", { diagnosedLast2Years });
+}
+
+export function evaluateQ16FollowupRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const followUpNormal = asBoolean(answer);
+  if (followUpNormal === undefined) return {};
+  return patchParentAnswer(state, "q16", { followUpNormal });
 }
 
 /**
@@ -884,6 +1232,33 @@ export function evaluateQ17Rules(
   return { planFilter: "Guaranteed+" };
 }
 
+export function evaluateQ17SzOnlyRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const seizures = asBoolean(answer);
+  if (seizures === undefined) return {};
+  return patchParentAnswer(state, "q17", { seizures });
+}
+
+export function evaluateQ17CountRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const seizuresLast12Months = asNumber(answer);
+  if (seizuresLast12Months === undefined) return {};
+  return patchParentAnswer(state, "q17", { seizuresLast12Months });
+}
+
+export function evaluateQ17MedsRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const multipleMedications = asBoolean(answer);
+  if (multipleMedications === undefined) return {};
+  return patchParentAnswer(state, "q17", { multipleMedications });
+}
+
 /**
  * Evaluates rules for Q18 (Mental Health)
  * Checks Q6, Q8, Q4 combination rules
@@ -924,6 +1299,24 @@ export function evaluateQ18Rules(
   }
 
   return { planFilter: "Day1", followUps };
+}
+
+export function evaluateQ18MedsCountRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const medicationsCount = asNumber(answer);
+  if (medicationsCount === undefined) return {};
+  return patchParentAnswer(state, "q18", { medicationsCount });
+}
+
+export function evaluateQ18ModerateRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const moderateMentalHealth = asBoolean(answer);
+  if (moderateMentalHealth === undefined) return {};
+  return patchParentAnswer(state, "q18", { moderateMentalHealth });
 }
 
 /**
@@ -971,6 +1364,42 @@ export function evaluateQ19Rules(
     return { planFilter: "Signature" };
   }
   return { planFilter: "Day1+" };
+}
+
+export function evaluateQ19IbdRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const crohnsUC = asBoolean(answer);
+  if (crohnsUC === undefined) return {};
+  return patchParentAnswer(state, "q19", { crohnsUC });
+}
+
+export function evaluateQ19FuRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const followUpYears = asNumber(answer);
+  if (followUpYears === undefined) return {};
+  return patchParentAnswer(state, "q19", { followUpYears });
+}
+
+export function evaluateQ19SevRules(
+  state: QuestionnaireClientState,
+  answer: { surgeries?: number; flareLast12Months?: boolean } | unknown
+): RuleEvaluationResult {
+  const payload = (answer ?? {}) as Record<string, unknown>;
+  const surgeries = asNumber(payload.surgeries);
+  const flareLast12Months = asBoolean(payload.flareLast12Months);
+  const patch: Record<string, unknown> = {};
+  if (surgeries !== undefined) {
+    patch.surgeries = surgeries;
+  }
+  if (flareLast12Months !== undefined) {
+    patch.flareLast12Months = flareLast12Months;
+  }
+  if (Object.keys(patch).length === 0) return {};
+  return patchParentAnswer(state, "q19", patch);
 }
 
 /**
@@ -1031,6 +1460,33 @@ export function evaluateQ21Rules(
   return { planFilter: "Signature" };
 }
 
+export function evaluateQ21ProgRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const msProgressive = asBoolean(answer);
+  if (msProgressive === undefined) return {};
+  return patchParentAnswer(state, "q21", { msProgressive });
+}
+
+export function evaluateQ21AmbRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const ambulatoryIssues = asBoolean(answer);
+  if (ambulatoryIssues === undefined) return {};
+  return patchParentAnswer(state, "q21", { ambulatoryIssues });
+}
+
+export function evaluateQ21AttacksRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const attacksLast12Months = asNumber(answer);
+  if (attacksLast12Months === undefined) return {};
+  return patchParentAnswer(state, "q21", { attacksLast12Months });
+}
+
 /**
  * Evaluates rules for Q22 (Arthritis)
  * Checks Q12, Q16, BMI >43
@@ -1072,6 +1528,33 @@ export function evaluateQ22Rules(
   return { planFilter: "Day1" };
 }
 
+export function evaluateQ22DailyRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const dailySymptoms = asBoolean(answer);
+  if (dailySymptoms === undefined) return {};
+  return patchParentAnswer(state, "q22", { dailySymptoms });
+}
+
+export function evaluateQ22SurgeryRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const surgery = asBoolean(answer);
+  if (surgery === undefined) return {};
+  return patchParentAnswer(state, "q22", { surgery });
+}
+
+export function evaluateQ22MedsRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const onMedication = asBoolean(answer);
+  if (onMedication === undefined) return {};
+  return patchParentAnswer(state, "q22", { onMedication });
+}
+
 /**
  * Evaluates rules for Q23 (Extreme Sports)
  */
@@ -1090,6 +1573,24 @@ export function evaluateQ23Rules(
     return { planFilter: "Signature" };
   }
   return { planFilter: "Day1+" };
+}
+
+export function evaluateQ23HiRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const highestRisk = asBoolean(answer);
+  if (highestRisk === undefined) return {};
+  return patchParentAnswer(state, "q23", { highestRisk });
+}
+
+export function evaluateQ23MidRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const moderateRisk = asBoolean(answer);
+  if (moderateRisk === undefined) return {};
+  return patchParentAnswer(state, "q23", { moderateRisk });
 }
 
 /**
@@ -1120,6 +1621,33 @@ export function evaluateQ24Rules(
   return { planFilter: "Day1" };
 }
 
+export function evaluateQ24TwoRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const multipleBefore60 = asBoolean(answer);
+  if (multipleBefore60 === undefined) return {};
+  return patchParentAnswer(state, "q24", { multipleBefore60 });
+}
+
+export function evaluateQ24Under50Rules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const oneBefore50 = asBoolean(answer);
+  if (oneBefore50 === undefined) return {};
+  return patchParentAnswer(state, "q24", { oneBefore50 });
+}
+
+export function evaluateQ24HereditaryRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const hereditary = asBoolean(answer);
+  if (hereditary === undefined) return {};
+  return patchParentAnswer(state, "q24", { hereditary });
+}
+
 /**
  * Evaluates rules for Q25 (High-Risk Travel)
  */
@@ -1137,6 +1665,15 @@ export function evaluateQ25Rules(
   return { planFilter: "Guaranteed+" };
 }
 
+export function evaluateQ25ResRules(
+  state: QuestionnaireClientState,
+  answer: unknown
+): RuleEvaluationResult {
+  const resideOutside6Months = asBoolean(answer);
+  if (resideOutside6Months === undefined) return {};
+  return patchParentAnswer(state, "q25", { resideOutside6Months });
+}
+
 /**
  * Main rule evaluation dispatcher
  * Evaluates rules for a specific question and updates state accordingly
@@ -1147,56 +1684,162 @@ export function evaluateRules(
   answer: any
 ): RuleEvaluationResult {
   switch (questionId) {
+    case "q2_weightLoss":
+      return evaluateQ2WeightLossRules(state, answer);
+    case "q2_pregnancy":
+      return evaluateQ2PregnancyRules(state, answer);
+    case "q2_birth6m":
+      return evaluateQ2Birth6mRules(state, answer);
+    case "q2_prePregWeight":
+      return evaluateQ2PrePregWeightRules(state, answer);
     case "q1":
       return evaluateQ1Rules(state, answer as Q1Answer);
     case "q2":
       return evaluateQ2Rules(state, answer as Q2Answer);
     case "q3":
       return evaluateQ3Rules(state, answer as Q3Answer);
+    case "q3c":
+      return evaluateQ3cRules(state, answer as Q3cAnswer);
     case "q4":
       return evaluateQ4Rules(state, answer as Q4Answer);
+    case "q4q":
+      return evaluateQ4qRules(state, answer);
     case "q5":
       return evaluateQ5Rules(state, answer as Q5Answer);
+    case "q5mix":
+      return evaluateQ5MixRules(state, answer);
+    case "q5freq":
+      return evaluateQ5FreqRules(state, answer);
     case "q6":
       return evaluateQ6Rules(state, answer as Q6Answer);
+    case "q6when":
+      return evaluateQ6WhenRules(state, answer);
+    case "q6ecstasy":
+      return evaluateQ6EcstasyRules(state, answer);
+    case "q6howmany":
+      return evaluateQ6HowManyRules(state, answer);
     case "q7":
       return evaluateQ7Rules(state, answer as Q7Answer);
+    case "q7alc":
+      return evaluateQ7AlcRules(state, answer);
+    case "q7yrs":
+      return evaluateQ7YrsRules(state, answer);
     case "q8":
       return evaluateQ8Rules(state, answer as Q8Answer);
+    case "q8count":
+      return evaluateQ8CountRules(state, answer);
     case "q9":
       return evaluateQ9Rules(state, answer as Q9Answer);
+    case "q9mult":
+      return evaluateQ9MultRules(state, answer);
+    case "q9inc":
+      return evaluateQ9IncRules(state, answer);
+    case "q9yrs":
+      return evaluateQ9YrsRules(state, answer);
     case "q10":
       return evaluateQ10Rules(state, answer as Q10Answer);
+    case "q10b":
+      return evaluateQ10BRules(state, answer);
     case "q11":
       return evaluateQ11Rules(state, answer as Q11Answer);
+    case "q11stable":
+      return evaluateQ11StableRules(state, answer);
+    case "q11dx":
+      return evaluateQ11DxRules(state, answer);
+    case "q11fu":
+      return evaluateQ11FuRules(state, answer);
     case "q12":
       return evaluateQ12Rules(state, answer as Q12Answer);
+    case "q12type1":
+      return evaluateQ12Type1Rules(state, answer);
+    case "q12gest":
+      return evaluateQ12GestRules(state, answer);
+    case "q12meds":
+      return evaluateQ12MedsRules(state, answer);
+    case "q12comp":
+      return evaluateQ12CompRules(state, answer);
+    case "q12hba1c":
+      return evaluateQ12Hba1cRules(state, answer);
     case "q13":
       return evaluateQ13Rules(state, answer as Q13Answer);
     case "q14":
       return evaluateQ14Rules(state, answer as Q14Answer);
     case "q15":
       return evaluateQ15Rules(state, answer as Q15Answer);
+    case "q15o2":
+      return evaluateQ15O2Rules(state, answer);
+    case "q15sleep":
+      return evaluateQ15SleepRules(state, answer);
+    case "q15cpap":
+      return evaluateQ15CpapRules(state, answer);
+    case "q15asthma":
+      return evaluateQ15AsthmaRules(state, answer);
+    case "q15sev":
+      return evaluateQ15SevRules(state, answer);
     case "q16":
       return evaluateQ16Rules(state, answer as Q16Answer);
+    case "q16recent":
+      return evaluateQ16RecentRules(state, answer);
+    case "q16followup":
+      return evaluateQ16FollowupRules(state, answer);
     case "q17":
       return evaluateQ17Rules(state, answer as Q17Answer);
+    case "q17szonly":
+      return evaluateQ17SzOnlyRules(state, answer);
+    case "q17count":
+      return evaluateQ17CountRules(state, answer);
+    case "q17meds":
+      return evaluateQ17MedsRules(state, answer);
     case "q18":
       return evaluateQ18Rules(state, answer as Q18Answer);
+    case "q18medscount":
+      return evaluateQ18MedsCountRules(state, answer);
+    case "q18moderate":
+      return evaluateQ18ModerateRules(state, answer);
     case "q19":
       return evaluateQ19Rules(state, answer as Q19Answer);
+    case "q19ibd":
+      return evaluateQ19IbdRules(state, answer);
+    case "q19fu":
+      return evaluateQ19FuRules(state, answer);
+    case "q19sev":
+      return evaluateQ19SevRules(state, answer);
     case "q20":
       return evaluateQ20Rules(state, answer as Q20Answer);
     case "q21":
       return evaluateQ21Rules(state, answer as Q21Answer);
+    case "q21prog":
+      return evaluateQ21ProgRules(state, answer);
+    case "q21amb":
+      return evaluateQ21AmbRules(state, answer);
+    case "q21attacks":
+      return evaluateQ21AttacksRules(state, answer);
     case "q22":
       return evaluateQ22Rules(state, answer as Q22Answer);
+    case "q22daily":
+      return evaluateQ22DailyRules(state, answer);
+    case "q22surgery":
+      return evaluateQ22SurgeryRules(state, answer);
+    case "q22meds":
+      return evaluateQ22MedsRules(state, answer);
     case "q23":
       return evaluateQ23Rules(state, answer as Q23Answer);
+    case "q23hi":
+      return evaluateQ23HiRules(state, answer);
+    case "q23mid":
+      return evaluateQ23MidRules(state, answer);
     case "q24":
       return evaluateQ24Rules(state, answer as Q24Answer);
+    case "q24two":
+      return evaluateQ24TwoRules(state, answer);
+    case "q24under50":
+      return evaluateQ24Under50Rules(state, answer);
+    case "q24hereditary":
+      return evaluateQ24HereditaryRules(state, answer);
     case "q25":
       return evaluateQ25Rules(state, answer as Q25Answer);
+    case "q25res":
+      return evaluateQ25ResRules(state, answer);
     default:
       return {};
   }

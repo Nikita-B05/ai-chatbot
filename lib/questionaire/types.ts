@@ -32,6 +32,10 @@ export interface Q3Answer {
   institutionalized?: boolean;
 }
 
+export interface Q3cAnswer {
+  institutionalized: boolean;
+}
+
 export interface Q4Answer {
   alcohol: boolean;
   drinksPerWeek?: number;
@@ -187,6 +191,7 @@ export interface QuestionnaireClientState {
     q1?: Q1Answer;
     q2?: Q2Answer;
     q3?: Q3Answer;
+    q3c?: Q3cAnswer;
     q4?: Q4Answer;
     q5?: Q5Answer;
     q6?: Q6Answer;

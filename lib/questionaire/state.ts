@@ -187,7 +187,7 @@ export function getAvailableQuestions(
   const answered = new Set(state.questionsAnswered);
   const seen = new Set<string>();
 
-  // Check mandatory questions first
+  // Add pending mandatory questions first to ensure they are resolved before anything else
   for (const q of MANDATORY_QUESTIONS) {
     if (!answered.has(q) && canAskQuestion(q, state)) {
       available.push(q);
@@ -195,22 +195,31 @@ export function getAvailableQuestions(
     }
   }
 
-  // Prioritize follow-up queue next
+  // Identify the next question from the base questionnaire order
+  const nextInOrder = getNextFallbackQuestion(state, seen);
+  const nextInOrderIndex = getQuestionOrderIndex(nextInOrder);
+
+  // Surface follow-up questions only when they should occur at or before the next ordered question.
   for (const queuedQuestion of state.followUpQueue) {
     if (seen.has(queuedQuestion) || answered.has(queuedQuestion)) {
       continue;
     }
 
-    if (canAskQuestion(queuedQuestion, state)) {
+    if (!canAskQuestion(queuedQuestion, state)) {
+      continue;
+    }
+
+    const queuedIndex = getQuestionOrderIndex(queuedQuestion);
+    if (queuedIndex <= nextInOrderIndex) {
       available.push(queuedQuestion);
       seen.add(queuedQuestion);
     }
   }
 
-  // Provide a single fallback question to keep progress moving
-  const fallback = getNextFallbackQuestion(state, seen);
-  if (fallback) {
-    available.push(fallback);
+  // Finally, add the next ordered question if it hasn't been surfaced already
+  if (nextInOrder && !seen.has(nextInOrder)) {
+    available.push(nextInOrder);
+    seen.add(nextInOrder);
   }
 
   return available;
@@ -366,8 +375,20 @@ export function removeFollowUpQuestion(
 export function getNextFollowUpQuestion(
   state: QuestionnaireClientState
 ): string | undefined {
+  const answered = new Set(state.questionsAnswered);
+  const nextInOrder = getNextFallbackQuestion(state, new Set<string>());
+  const nextInOrderIndex = getQuestionOrderIndex(nextInOrder);
+
   for (const queuedQuestion of state.followUpQueue) {
-    if (canAskQuestion(queuedQuestion, state)) {
+    if (answered.has(queuedQuestion)) {
+      continue;
+    }
+    if (!canAskQuestion(queuedQuestion, state)) {
+      continue;
+    }
+
+    const queuedIndex = getQuestionOrderIndex(queuedQuestion);
+    if (!nextInOrder || queuedIndex <= nextInOrderIndex) {
       return queuedQuestion;
     }
   }
@@ -453,3 +474,20 @@ function getNextFallbackQuestion(
 
   return;
 }
+
+function getQuestionOrderIndex(questionId: string | undefined): number {
+  if (!questionId) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const index = QUESTION_ORDER_INDEX[questionId];
+  return index ?? Number.POSITIVE_INFINITY;
+}
+
+const QUESTION_ORDER_INDEX: Record<string, number> = QUESTION_ORDER.reduce(
+  (accumulator, questionId, index) => {
+    accumulator[questionId] = index;
+    return accumulator;
+  },
+  {} as Record<string, number>
+);
