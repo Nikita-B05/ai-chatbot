@@ -1,0 +1,365 @@
+flowchart TD
+  %% Styles
+  classDef outcome fill:#f2f2f2,stroke:#333,stroke-width:1px,color:#111;
+  classDef terminal fill:#ffe6e6,stroke:#cc0000,stroke-width:1.5px,color:#111;
+  classDef flag fill:#e8ffe8,stroke:#228833,stroke-width:1px,color:#111;
+  classDef question fill:#eef5ff,stroke:#4466cc,stroke-width:1px,color:#111;
+
+  %% Persisted flags (set as needed)
+  %% - SmokerStatus: smoker | non-smoker
+  %% - BMI: numeric; bands used: ≤17.0, 17.1–38.0, 38.1–40.0, 40.1–43.0, 43.1–44.0, ≥44.1
+  %% - Sex, PregnancyStatus, RecentBirth(6mo), UnintentionalWeightLoss(>10%/12mo)
+  %% - Age
+  %% - AlcoholWeeklyDrinks
+  %% - CannabisUse: frequency/week and MixedWithTobacco
+  %% - IllicitDrugLastUseYears & SubstanceGroup (Only Ecstasy/Speed/Hallucinogens vs other)
+  %% - TreatmentAlcoholDrugYears & Type(alcohol-only vs drugs/mixed)
+  %% - DUI: inLast3Years, totalCount
+  %% - CriminalHistory: severity and time since sentence/probation/parole
+  %% - CurrentSymptomsFlag, AbnormalTestsPendingFlag
+  %% - CAD/Q11Present, Q11Stable, Q11DxYears, Q11LastFollowupYears
+  %% - Diabetes: type1?, onMeds?, HbA1c, complications?, gestational?, pregnancy
+  %% - Respiratory: COPD/emphysema/cysticFibrosis, oxygenTherapy, asthmaSeverity, sleepApnea, CPAPDaily
+  %% - GU (sex-specific recent findings and follow-ups)
+  %% - Neuro: seizure-only? recent seizure count, meds count
+  %% - Q18Severity: none | moderate | severe  (used by combo rules and Q21)
+  %% - ActivitiesRisk, FamilyHistoryFlags, Travel/Residency plans
+
+  Start((Start)) --> Q1
+
+  %% Q1
+  Q1["Q1. Tobacco in past 12 months?"]:::question
+  Q1 -->|Yes| FlagSmoker[Set flag: Smoker rates]:::flag --> Q2
+  Q1 -->|No| FlagNonSmoker[Set flag: Non-smoker rates]:::flag --> Q2
+
+  %% Q2 BMI + sex-specific 2B
+  Q2["Q2. Height & Weight → BMI; Female: pregnancy/birth checks"]:::question
+  Q2 -->|"BMI ≤ 17.0"| OUT2aGpp[Outcome: Guaranteed+]:::outcome --> Q3
+  Q2 -->|"BMI 17.1–38.0"| Q2B_BaseDay1[Proceed 2B; Base tier: Day1]
+  Q2 -->|"BMI 38.1–40.0"| Q2B_BaseDay1p[Proceed 2B; Base tier: Day1+]
+  Q2 -->|"BMI 40.1–43.0"| Q2B_BaseSig[Proceed 2B; Base tier: Signature]
+  Q2 -->|"BMI 43.1–44.0"| OUT2bDefp[Outcome: Deferred+]:::outcome --> Q3
+  Q2 -->|"BMI ≥ 44.1"| OUT2cGpp[Outcome: Guaranteed+]:::outcome --> Q3
+
+  Q2B_BaseDay1 --> Q2B
+  Q2B_BaseDay1p --> Q2B
+  Q2B_BaseSig --> Q2B
+
+  Q2B["Q2B. Sex-specific checks"]:::question
+  Q2B -->|"Male: lost >10% body weight in 12 months = Yes"| OUT2dDefp[Outcome override: Deferred+]:::outcome --> Q3
+  Q2B -->|"Male: No"| Q3
+  Q2B -->|"Female: Pregnant = Yes → use pre-pregnancy BMI (base tier persists)"| Q3
+  Q2B -->|"Female: Pregnant = No; Birth in last 6 months = Yes → use pre-pregnancy BMI"| Q3
+  Q2B -->|"Female: Not pregnant; No recent birth; lost >10% body weight = Yes"| OUT2eDefp[Outcome override: Deferred+]:::outcome --> Q3
+  Q2B -->|"Female: else → base BMI tier persists"| Q3
+
+  %% Q3 Work + occupational risk
+  Q3["Q3. Currently working?"]:::question
+  Q3 -->|"Yes"| Q3a["Duties include: high-risk (commercial diving, diplomat in high-risk, deployed military, stunt, exotic dancer/adult film)?"]:::question
+  Q3a -->|"Yes"| OUT3Defp[Outcome: Deferred+]:::outcome --> Q4
+  Q3a -->|"No"| Q3b["Duties include: heights>30ft, offshore fishing/mining, logging/forestry(excl log hauler), hydro/power lineman, pilot(excl scheduled airline)?"]:::question
+  Q3b -->|"Yes"| OUT3Sig[Outcome: Signature]:::outcome --> Q4
+  Q3b -->|"No"| OUT3Day1[Outcome: Day1]:::outcome --> Q4
+  Q3 -->|"No"| Q3c["Receiving care in facility/need assistance (bedridden/wheelchair)?"]:::question
+  Q3c -->|"Yes"%| OUT3Gpp[Outcome: Guaranteed+]:::outcome --> Q4
+  Q3c -->|"No"| OUT3Day1b[Outcome: Day1]:::outcome --> Q4
+
+  %% Q4 Alcohol
+  Q4["Q4. Consume alcohol?"]:::question
+  Q4 -->|"No"| OUT4Day1[Outcome: Day1]:::outcome --> Q5
+  Q4 -->|"Yes"| Q4q["Avg standard drinks/week?"]:::question
+  Q4q -->|"< 14"| OUT4Day1b[Outcome: Day1]:::outcome --> Q5
+  Q4q -->|"14–20"| OUT4Day1p[Outcome: Day1+]:::outcome --> Q5
+  Q4q -->|"21–28"| Q4comb["Combo with Q18: If Q18 severe → Guaranteed+; If Q18 moderate → Deferred+; Otherwise Signature"]:::question
+  Q4comb -->|"Q18 severe"| OUT4Gpp[Outcome: Guaranteed+]:::outcome --> Q5
+  Q4comb -->|"Q18 moderate"| OUT4Defp[Outcome: Deferred+]:::outcome --> Q5
+  Q4comb -->|"Otherwise"| OUT4Sig[Outcome: Signature]:::outcome --> Q5
+  Q4q -->|"> 28"| OUT4Gpp2[Outcome: Guaranteed+]:::outcome --> Q5
+
+  %% Q5 Marijuana/Cannabis/Hashish
+  Q5["Q5. Marijuana/hashish/cannabis in past 12 mo?"]:::question
+  Q5 -->|"No"| OUT5Day1[Outcome: Day1]:::outcome --> Q6
+  Q5 -->|"Yes"| Q5mix["Do you mix with tobacco?"]:::question
+  Q5mix -->|"No"| FlagNonSmoker2[Confirm non-smoker rates]:::flag --> Q5freq
+  Q5mix -->|"Yes"| FlagSmoker2[Set smoker rates if not already]:::flag --> Q5freq
+  Q5freq["Frequency per week?"]:::question
+  Q5freq -->|"15+"| OUT5Gpp[Outcome: Guaranteed+]:::outcome --> Q6
+  Q5freq -->|"8–14"| Q5age1["Age?"]:::question
+  Q5age1 -->|"≤ 25"| OUT5Defp[Outcome: Deferred+]:::outcome --> Q6
+  Q5age1 -->|"≥ 26"| OUT5Sig[Outcome: Signature]:::outcome --> Q6
+  Q5freq -->|"4–7"| Q5age2["Age?"]:::question
+  Q5age2 -->|"≤ 25"| OUT5Sig2[Outcome: Signature]:::outcome --> Q6
+  Q5age2 -->|"≥ 26"| OUT5Day1p[Outcome: Day1+]:::outcome --> Q6
+  Q5freq -->|"1–3"| Q5age3["Age?"]:::question
+  Q5age3 -->|"≤ 25"| OUT5Day1p2[Outcome: Day1+]:::outcome --> Q6
+  Q5age3 -->|"≥ 26"| OUT5Day1b2[Outcome: Day1]:::outcome --> Q6
+
+  %% Q6 Other illicit drugs (excl marijuana)
+  Q6["Q6. Ever used other illicit drugs (or listed Rx not prescribed)?"]:::question
+  Q6 -->|"No"| OUT6Day1[Outcome: Day1]:::outcome --> Q7
+  Q6 -->|"Yes"| Q6when["Years since last use?"]:::question
+  Q6when -->|"< 1"| OUT6Decline[DECLINE]:::terminal
+  Q6when -->|"1–2"| Q6comb12["If Q18=Yes OR Q4 ≥21 drinks → DECLINE; Otherwise Guaranteed+"]:::question
+  Q6comb12 -->|"Meets combo"| OUT6Decline2[DECLINE]:::terminal
+  Q6comb12 -->|"Otherwise"| OUT6Gpp[Outcome: Guaranteed+]:::outcome --> Q7
+  Q6when -->|"2–5"| Q6comb25["If Q18=Yes OR Q4 ≥21 drinks → Deferred+; Otherwise Signature"]:::question
+  Q6comb25 -->|"Meets combo"| OUT6Defp[Outcome: Deferred+]:::outcome --> Q7
+  Q6comb25 -->|"Otherwise"| OUT6Sig[Outcome: Signature]:::outcome --> Q7
+  Q6when -->|"5–10"| Q6ecstasy["Only Ecstasy/Speed/Hallucinogens?"]:::question
+  Q6ecstasy -->|"Yes"| Q6howmany["Total times?"]:::question
+  Q6howmany -->|"1 (experimental)"| OUT6Day1b[Outcome: Day1]:::outcome --> Q7
+  Q6howmany -->|"≥ 2"| OUT6Day1p2b[Outcome: Day1+]:::outcome --> Q7
+  Q6ecstasy -->|"No"| Q6comb510["If Q18=Yes OR Q4 ≥21 drinks → Signature; Otherwise Day1+"]:::question
+  Q6comb510 -->|"Meets combo"| OUT6Sig2[Outcome: Signature]:::outcome --> Q7
+  Q6comb510 -->|"Otherwise"%| OUT6Day1p3[Outcome: Day1+]:::outcome --> Q7
+  Q6when -->|">= 10"| OUT6Day1c[Outcome: Day1]:::outcome --> Q7
+
+  %% Q7 Treatment for alcohol/drugs
+  Q7["Q7. Ever received/been advised treatment (incl support groups) for alcohol or drugs?"]:::question
+  Q7 -->|"No"| OUT7Day1[Outcome: Day1]:::outcome --> Q8
+  Q7 -->|"Yes"| Q7alc["Treatment for alcohol only?"]:::question
+  Q7alc -->|"Yes"| Q7yrsA["Years since last treatment?  (If Q4 implies problematic use → DECLINE)"]:::question
+  Q7yrsA -->|"< 1"| OUT7Gpp[Outcome: Guaranteed+]:::outcome --> Q8
+  Q7yrsA -->|"1–2"| OUT7Defp[Outcome: Deferred+]:::outcome --> Q8
+  Q7yrsA -->|"2–5"| OUT7Sig[Outcome: Signature]:::outcome --> Q8
+  Q7yrsA -->|"5–10"| OUT7Day1p[Outcome: Day1+]:::outcome --> Q8
+  Q7yrsA -->|"≥ 10"| OUT7Day1b2[Outcome: Day1]:::outcome --> Q8
+  Q7alc -->|"No (drug or mixed)"| Q7yrsD["Years since last treatment? (If Q6 recent/severe → DECLINE)"]:::question
+  Q7yrsD -->|"< 1"| OUT7Gpp2[Outcome: Guaranteed+]:::outcome --> Q8
+  Q7yrsD -->|"1–2"| OUT7Defp2[Outcome: Deferred+]:::outcome --> Q8
+  Q7yrsD -->|"2–5"| OUT7Sig2[Outcome: Signature]:::outcome --> Q8
+  Q7yrsD -->|"5–10"| OUT7Day1p2[Outcome: Day1+]:::outcome --> Q8
+  Q7yrsD -->|"≥ 10"| OUT7Day1c[Outcome: Day1]:::outcome --> Q8
+
+  %% Q8 DUI/DWI
+  Q8["Q8. DUI/DWI in last 3 years?"]:::question
+  Q8 -->|"No"| OUT8Day1[Outcome: Day1]:::outcome --> Q9
+  Q8 -->|"Yes"| Q8age["Age > 71?"]:::question
+  Q8age -->|"Yes"| OUT8Gpp[Outcome: Guaranteed+]:::outcome --> Q9
+  Q8age -->|"No"%| Q8count["2 or more DUIs to date? (combo with Q18 applies)"]:::question
+  Q8count -->|"Yes"| OUT8Gpp2[Outcome: Guaranteed+]:::outcome --> Q9
+  Q8count -->|"No"| OUT8Day1p[Outcome: Day1+]:::outcome --> Q9
+
+  %% Q9 Criminal (non-DUI)
+  Q9["Q9. Criminal conviction/incarceration in last 5 years (non-DUI)?"]:::question
+  Q9 -->|"No"| OUT9Day1[Outcome: Day1]:::outcome --> Q10
+  Q9 -->|"Yes"| Q9mult["≥2 charges/convictions OR charges/sentencing currently pending?"]:::question
+  Q9mult -->|"Yes"| OUT9Decline[DECLINE]:::terminal
+  Q9mult -->|"No"| Q9inc["If incarcerated: ≥ 6 months?"]:::question
+  Q9inc -->|"Yes"| OUT9Decline2[DECLINE]:::terminal
+  Q9inc -->|"No"| Q9yrs["Years since completed sentence/parole/probation?"]:::question
+  Q9yrs -->|"< 3"| OUT9Gpp[Outcome: Guaranteed+]:::outcome --> Q10
+  Q9yrs -->|"3–5"| OUT9Defp[Outcome: Deferred+]:::outcome --> Q10
+  Q9yrs -->|"> 5"| OUT9Sig[Outcome: Signature]:::outcome --> Q10
+
+  %% Q10 Symptoms/abnormal tests pending
+  Q10["Q10A. Any current symptoms not yet consulted?"]:::question
+  Q10 -->|"Yes"| OUT10AGpp[Outcome: Guaranteed+]:::outcome --> Q10B
+  Q10 -->|"No"| OUT10ADay1[Outcome: Day1]:::outcome --> Q10B
+  Q10B["Q10B. Abnormal test advised/pending/investigations or awaiting results?"]:::question
+  Q10B -->|"Yes"| OUT10BGpp[Outcome: Guaranteed+]:::outcome --> Q11
+  Q10B -->|"No"| OUT10BDay1[Outcome: Day1]:::outcome --> Q11
+
+  %% Q11 Cardio/CVD (Strict precedence)
+  Q11["Q11. Cardio/cerebrovascular/aneurysm/clots/heart-vessel disorders?"]:::question
+  Q11 -->|"No"| OUT11Day1[Outcome: Day1]:::outcome --> Q12
+  Q11 -->|"Yes"| Q11bmi["BMI ≥ 44.0?"]:::question
+  Q11bmi -->|"Yes"| OUT11Decline[DECLINE]:::terminal
+  Q11bmi -->|"No"| Q11stable["Symptom-free, stable, regular follow-up, no pending surgery?"]:::question
+  Q11stable -->|"No (not stable)"| Q11unstableSmokerCheck["If Smoker → Guaranteed+; Else Deferred+"]:::question
+  Q11unstableSmokerCheck -->|"Smoker"| OUT11Gpp_smoker_unstable[Outcome: Guaranteed+]:::outcome --> Q12
+  Q11unstableSmokerCheck -->|"Non-smoker"| OUT11Defp[Outcome: Deferred+]:::outcome --> Q12
+  Q11stable -->|"Yes (stable)"| Q11dx["Years since diagnosis?"]:::question
+  Q11dx -->|"≤ 3"| Q11dx3SmokerAge["If age <40 OR Smoker → Guaranteed+; Else Deferred+"]:::question
+  Q11dx3SmokerAge -->|"Age<40 or Smoker"| OUT11Gpp_age_smoker[Outcome: Guaranteed+]:::outcome --> Q12
+  Q11dx3SmokerAge -->|"Else"| OUT11Defp2[Outcome: Deferred+]:::outcome --> Q12
+  Q11dx -->|"> 3"| Q11fu["When was last follow-up?"]:::question
+  Q11fu -->|"< 2 years ago"| Q11lt2["Evaluate in order: If BMI <40 → Signature; Else if Age<40 or Smoker → Deferred+; Else Guaranteed+"]:::question
+  Q11lt2 -->|"BMI <40"| OUT11Sig_lt2[Outcome: Signature]:::outcome --> Q12
+  Q11lt2 -->|"Else Age<40 or Smoker"| OUT11Defp_lt2[Outcome: Deferred+]:::outcome --> Q12
+  Q11lt2 -->|"Else"| OUT11Gpp_lt2[Outcome: Guaranteed+]:::outcome --> Q12
+  Q11fu -->|">= 2 years ago"| Q11ge2["Evaluate in order: If BMI<40 and (Age<40 or Smoker) → Guaranteed+; Else if BMI<40 → Deferred+; Else Guaranteed+"]:::question
+  Q11ge2 -->|"BMI<40 and (Age<40 or Smoker)"| OUT11Gpp_ge2_bmi_age[Outcome: Guaranteed+]:::outcome --> Q12
+  Q11ge2 -->|"BMI<40 only"| OUT11Defp_ge2_bmi[Outcome: Deferred+]:::outcome --> Q12
+  Q11ge2 -->|"Else"| OUT11Gpp_ge2_else[Outcome: Guaranteed+]:::outcome --> Q12
+
+  %% Q12 Diabetes (Female then Male)
+  Q12["Q12. Diabetes (Female/Male branches)"]:::question
+  Q12 --> Q12F["Female branch"]:::question
+  Q12F -->|"Dx with diabetes/pre-diabetes OR gestational <2y?"| Q12F1["Type 1 diabetes?"]:::question
+  Q12F1 -->|"Yes"| Q12F1a["If BMI >40 OR CAD(Q11)=Yes → Guaranteed+. Complications?"]:::question
+  Q12F1a -->|"Complications = Yes"| OUT12FGpp[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12F1a -->|"Complications = No"| Q12F1b["HbA1c ≥ 7.5% (last 3 mo)?"]:::question
+  Q12F1b -->|"Yes"| OUT12FDefp[Outcome: Deferred+]:::outcome --> Q13
+  Q12F1b -->|"No"| OUT12F_Gpp2[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12F1 -->|"No (Type 2/gestational/other)"| Q12F2["If pregnant: Gestational only?"]:::question
+  Q12F2 -->|"Yes (Gestational only)"| Q12F2a["If BMI >40 OR CAD(Q11)=Yes → Guaranteed+. Else: HbA1c ≤ 7.0%?"]:::question
+  Q12F2a -->|"Yes ≤7%"| OUT12FSig[Outcome: Signature]:::outcome --> Q13
+  Q12F2a -->|"No >7%"| OUT12FDefp2[Outcome: Deferred+]:::outcome --> Q13
+  Q12F2 -->|"No"| Q12F3["On/prescribed diabetes meds?"]:::question
+  Q12F3 -->|"Yes"| Q12F3a["If age 18–24 OR CAD(Q11)=Yes → Deferred+. If BMI >40 → Guaranteed+. Else HbA1c ≥7.5%?"]:::question
+  Q12F3a -->|"HbA1c ≥7.5%"| Q12F3b["If BMI 38–39 → Deferred+; 36–37.9 → Signature; 18–36 → Day1+"]:::question --> Q13
+  Q12F3a -->|"HbA1c <7.5%"| OUT12FDay1p[Outcome: Day1+]:::outcome --> Q13
+  Q12F3 -->|"No"| Q12F4["Not pregnant: apply same meds/HbA1c/BMI logic if meds later"]:::question --> Q13
+
+  Q12 --> Q12M["Male branch"]:::question
+  Q12M -->|"Dx with diabetes/pre-diabetes?"| Q12M1["Type 1 diabetes?"]:::question
+  Q12M1 -->|"Yes"| Q12M1a["If BMI >40 OR CAD(Q11)=Yes → Guaranteed+. Complications?"]:::question
+  Q12M1a -->|"Complications = Yes"| OUT12MGpp[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12M1a -->|"Complications = No"| Q12M1b["HbA1c ≥ 7.5% (last 3 mo)?"]:::question
+  Q12M1b -->|"Yes"| OUT12MDefp[Outcome: Deferred+]:::outcome --> Q13
+  Q12M1b -->|"No"| OUT12M_Gpp2[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12M1 -->|"No"| Q12M2["On/prescribed diabetes meds? If age 18–24 OR CAD(Q11)=Yes → Deferred+. If BMI >40 → Guaranteed+. Else HbA1c ≥7.5%?"]:::question
+  Q12M2 -->|"HbA1c ≥7.5%"| Q12M2b["If BMI 38–39 → Deferred+; 36–37.9 → Signature; 18–36 → Day1+"]:::question --> Q13
+  Q12M2 -->|"HbA1c <7.5%"| OUT12MDay1p[Outcome: Day1+]:::outcome --> Q13
+  Q12M -->|"No diagnosis"| OUT12MDay1[Outcome: Day1]:::outcome --> Q13
+
+  %% Q13 Cancer/lymphoma/malignancy last 10 years
+  Q13["Q13. Cancer/tumor/lymphoma/leukemia/malignancy in last 10 years?"]:::question
+  Q13 -->|"No"| OUT13Day1[Outcome: Day1]:::outcome --> Q14
+  Q13 -->|"Yes"| OUT13Defp[Outcome: Deferred+]:::outcome --> Q14
+
+  %% Q14 Immune/HIV/lupus/scleroderma
+  Q14["Q14. Immune system disease, lupus, scleroderma, AIDS/HIV, etc?"]:::question
+  Q14 -->|"No"| OUT14Day1[Outcome: Day1]:::outcome --> Q15
+  Q14 -->|"Yes"| OUT14Gpp[Outcome: Guaranteed+]:::outcome --> Q15
+
+  %% Q15 Respiratory/COPD/asthma/sleep apnea
+  Q15["Q15. SOB/emphysema/COPD/cystic fibrosis?"]:::question
+  Q15 -->|"Yes"| Q15O2["On oxygen therapy in last 2 years?"]:::question
+  Q15O2 -->|"Yes"| OUT15Gpp[Outcome: Guaranteed+]:::outcome --> Q16
+  Q15O2 -->|"No"| OUT15Defp[Outcome: Deferred+]:::outcome --> Q16
+  OUT15Defp -.-> Note15DefpEsc[Escalation - if CAD Q11 or Smoker then Guaranteed Plus]:::flag
+  Q15 -->|"No"| Q15sleep["Diagnosed/treated for sleep apnea?"]:::question
+  Q15sleep -->|"No"| Q15asthma["Ever diagnosed with asthma or chronic bronchitis?"]:::question
+  Q15asthma -->|"No"| OUT15Day1[Outcome: Day1]:::outcome --> Q16
+  Q15asthma -->|"Yes"| Q15sev["Steroids, ≥2 daily inhalers, admitted/hospitalized (last 2y)?"]:::question
+  Q15sev -->|"No"| OUT15Day1p[Outcome: Day1+]:::outcome --> Q16
+  Q15sev -->|"Yes"| OUT15Sig[Outcome: Signature]:::outcome --> Q16
+  OUT15Sig -.-> Note15SigEsc[Escalation - if Smoker then Deferred Plus]:::flag
+  Q15sleep -->|"Yes"| Q15cpap["Use daily treatment (CPAP/BIPAP/oral appliance)?"]:::question
+  Q15cpap -->|"No"| OUT15Sig2[Outcome: Signature]:::outcome --> Q16
+  OUT15Sig2 -.-> Note15Sig2Esc[Escalation - if CAD Q11 then Deferred Plus]:::flag
+  Q15cpap -->|"Yes"| OUT15Day1p2[Outcome: Day1+]:::outcome --> Q16
+  OUT15Day1p2 -.-> Note15Day1p2Esc[Escalation - if CAD Q11 then Signature]:::flag
+
+  %% Q16 Genitourinary (Male/Female)
+  Q16["Q16. GU disorders"]:::question
+  Q16 --> Q16M["Male: prostate/testes/kidney/nephritis/nephropathy/polycystic/other GU? (excl single non-obstructive stone/infection)"]:::question
+  Q16M -->|"Yes"| OUT16MDefp[Outcome: Deferred+]:::outcome --> Q17
+  Q16M -->|"No"| Q16M2["In last 2y: sugar/blood in urine or PSA elevated due to infection?"]:::question
+  Q16M2 -->|"No"| OUT16MDay1[Outcome: Day1]:::outcome --> Q17
+  Q16M2 -->|"Yes"| Q16M3["Normal follow-up in last 12 mo, no further tests/consults?"]:::question
+  Q16M3 -->|"Yes"| OUT16MDay1p[Outcome: Day1+]:::outcome --> Q17
+  Q16M3 -->|"No"| OUT16MDefp2[Outcome: Deferred+]:::outcome --> Q17
+  Q16 --> Q16F["Female: ovarian/uterus/genital/kidney/nephritis/nephropathy/polycystic/other GU? (same exclusions)"]:::question
+  Q16F -->|"Yes"| OUT16FDefp[Outcome: Deferred+]:::outcome --> Q17
+  Q16F -->|"No"| Q16F2["Last 2y: sugar/blood in urine (non-menstrual) or abnormal Pap?"]:::question
+  Q16F2 -->|"No"| OUT16FDay1[Outcome: Day1]:::outcome --> Q17
+  Q16F2 -->|"Yes"| Q16F3["Normal follow-up in last 12 mo, no further tests/consults?"]:::question
+  Q16F3 -->|"Yes"| OUT16FDay1p[Outcome: Day1+]:::outcome --> Q17
+  Q16F3 -->|"No"| OUT16FDefp2[Outcome: Deferred+]:::outcome --> Q17
+
+  %% Q17 Neuro (incl seizures) with Q18 dependency
+  Q17["Q17. Alzheimer/seizures/MND/dementia/autism/CP/Parkinson's etc?"]:::question
+  Q17 -->|"No"| OUT17Day1[Outcome: Day1]:::outcome --> Q18
+  Q17 -->|"Yes"| Q17szOnly["Only seizure/epilepsy?"]:::question
+  Q17szOnly -->|"No"| Q17comb["If Q18=Yes → Guaranteed+; Otherwise Deferred+"]:::question
+  Q17comb -->|"Q18 Yes"| OUT17Gpp[Outcome: Guaranteed+]:::outcome --> Q18
+  Q17comb -->|"Q18 No"| OUT17Defp[Outcome: Deferred+]:::outcome --> Q18
+  Q17szOnly -->|"Yes"| Q17szCount["Seizures in last 12 months?"]:::question
+  Q17szCount -->|"0"| Q17sz0["If Q18 Yes → Signature+; Otherwise Day1+"]:::question --> Q18
+  Q17szCount -->|"1–3"| Q17meds1["Currently prescribed >1 medication?"]:::question
+  Q17meds1 -->|"No"| OUT17Sig[Outcome: Signature]:::outcome --> Q18
+  Q17meds1 -->|"Yes"| Q17comb2["If Q18 Yes → Guaranteed+; Otherwise Deferred+"]:::question --> Q18
+  Q17szCount -->|"4–6"| Q17meds2["Currently prescribed >1 medication?"]:::question
+  Q17meds2 -->|"No"| OUT17Defp2[Outcome: Deferred+]:::outcome --> Q18
+  Q17meds2 -->|"Yes"| OUT17Gpp2[Outcome: Guaranteed+]:::outcome --> Q18
+  Q17szCount -->|"≥ 7"| OUT17Gpp3[Outcome: Guaranteed+]:::outcome --> Q18
+
+  %% Q18 Mental health with combo rules to Q6 and Q4
+  Q18["Q18. Mental health: severe anxiety/depression, bipolar, schizophrenia, psychosis, suicide attempt?"]:::question
+  Q18note["Severe = multiple episodes; last <24 mo; <2 weeks off; or hospitalization history"]:::flag
+  Q18 -->|"Yes"| Q18meds["Currently prescribed ≥3 medications?"]:::question
+  Q18meds -->|"Yes"| OUT18Defp[Outcome: Deferred+]:::outcome --> Q19
+  Q18meds -->|"No"| OUT18Sig[Outcome: Signature]:::outcome --> Q19
+  Q18 -->|"No"| Q18mod["Moderate anxiety/depression (male/female); personality disorder?"]:::question
+  Q18mod -->|"No"| OUT18Day1[Outcome: Day1]:::outcome --> Q19
+  Q18mod -->|"Yes"| Q18comb["If Q6=Yes but not Q8 OR Q4 ≥21 → Deferred+; Else Day1+"]:::question
+  Q18comb -->|"Combo applies"| OUT18Defp2[Outcome: Deferred+]:::outcome --> Q19
+  Q18comb -->|"Otherwise"| OUT18Day1p[Outcome: Day1+]:::outcome --> Q19
+
+  %% Q19 GI/hepatic/pancreas/IBD
+  Q19["Q19. Crohn's, UC, hepatitis (excl A), pancreatitis, pancreatic cancer, GI bleed, etc?"]:::question
+  Q19 -->|"No"| OUT19Day1[Outcome: Day1]:::outcome --> Q20
+  Q19 -->|"Yes"| Q19bmi["BMI < 18?"]:::question
+  Q19bmi -->|"Yes"| OUT19Gpp[Outcome: Guaranteed+]:::outcome --> Q20
+  Q19bmi -->|"No"| Q19IBD["Dx of diverticulitis/Crohn's/UC >12 mo ago?"]:::question
+  Q19IBD -->|"No"| OUT19Defp[Outcome: Deferred+]:::outcome --> Q20
+  Q19IBD -->|"Yes"| Q19fu["Routine follow-up/surveillance in past 2y?"]:::question
+  Q19fu -->|"No"| OUT19Defp2[Outcome: Deferred+]:::outcome --> Q20
+  Q19fu -->|"Yes"| Q19sev["≥2 surgeries in last 5y, missed work/school last 2y, hospitalized last 2y, or flare in last 12 mo?"]:::question
+  Q19sev -->|"Yes"| OUT19Sig[Outcome: Signature]:::outcome --> Q20
+  Q19sev -->|"No"| Q19bmiband["If BMI 18–20 → Signature; Otherwise Day1+"]:::question --> Q20
+
+  %% Q20 Endocrine/metabolic (excl controlled thyroid)
+  Q20["Q20. Endocrine/metabolic (adrenal/parathyroid/pituitary/hormone/metabolic disorders)?"]:::question
+  Q20 -->|"No"| OUT20Day1[Outcome: Day1]:::outcome --> Q21
+  Q20 -->|"Yes"| OUT20Sig[Outcome: Signature]:::outcome --> Q21
+
+  %% Q21 Neuro-motor/MS with clarified dependency on Q18
+  Q21["Q21. MS, muscular dystrophy, numbness/weakness, paralysis?"]:::question
+  Q21 -->|"No"| OUT21Day1[Outcome: Day1]:::outcome --> Q22
+  Q21 -->|"Yes"| Q21prog["In last 2y: MS progressive with loss of bowel/bladder?"]:::question
+  Q21prog -->|"Yes"| OUT21Gpp[Outcome: Guaranteed+]:::outcome --> Q22
+  Q21prog -->|"No"| Q21age["If Age > 40 OR (Q18 severity ≥ Signature) → Guaranteed+; Else continue"]:::question
+  Q21age -->|"Triggers met"| OUT21Gpp2[Outcome: Guaranteed+]:::outcome --> Q22
+  Q21age -->|"Not met"| Q21amb["Ambulatory/disability issues or >2 attacks in last 12 mo?"]:::question
+  Q21amb -->|"Yes"| OUT21Defp[Outcome: Deferred+]:::outcome --> Q22
+  Q21amb -->|"No"| OUT21Sig[Outcome: Signature]:::outcome --> Q22
+
+  %% Q22 Rheum/arthritis/spinal disc with dependencies
+  Q22["Q22. Rheumatoid or psoriatic arthritis, spinal disc disease?"]:::question
+  Q22 -->|"No"| OUT22Day1[Outcome: Day1]:::outcome --> Q23
+  Q22 -->|"Yes"| Q22dep["If Q12=Yes (DM) or Q16=Yes (GU) or BMI >43 → Guaranteed+; Else: daily symptoms/surgery?"]:::question
+  Q22dep -->|"Meets dep"| OUT22Gpp[Outcome: Guaranteed+]:::outcome --> Q23
+  Q22dep -->|"Yes (daily sx/surgery)"| OUT22Sig[Outcome: Signature]:::outcome --> Q23
+  Q22dep -->|"No"| Q22meds["On prescribed daily meds?"]:::question
+  Q22meds -->|"Yes"| Q22age["Age < 40?"]:::question
+  Q22age -->|"Yes"| OUT22Sig2[Outcome: Signature]:::outcome --> Q23
+  Q22age -->|"No"| OUT22Day1p[Outcome: Day1+]:::outcome --> Q23
+  Q22meds -->|"No"| OUT22Day1b[Outcome: Day1]:::outcome --> Q23
+
+  %% Q23 High-risk sports/activities
+  Q23["Q23. High-risk activities/sports past 2y or next 12 mo?"]:::question
+  Q23 -->|"No"| OUT23Day1[Outcome: Day1]:::outcome --> Q24
+  Q23 -->|"Yes"| Q23hi["Free solo, >6000m, ≥YDS5.11, NCCS VI, kayak jumping, racing >240km/h, solo/night/cave/wreck scuba?"]:::question
+  Q23hi -->|"Yes"| OUT23Gpp[Outcome: Guaranteed+]:::outcome --> Q24
+  Q23hi -->|"No"| Q23mid["Ice/glacier climbing, >4000m, YDS5.8 or NCCS V, bungee, paragliding/hang gliding, scuba >45m?"]:::question
+  Q23mid -->|"Yes"| OUT23Sig[Outcome: Signature]:::outcome --> Q24
+  Q23mid -->|"No"| OUT23Day1p[Outcome: Day1+]:::outcome --> Q24
+
+  %% Q24 Family history
+  Q24["Q24. Immediate family dx <65: ALS, cardiomyopathy, HNPCC/Lynch, Huntington's, muscular dystrophy, polycystic kidney?"]:::question
+  Q24 -->|"Yes"| OUT24Defp[Outcome: Deferred+]:::outcome --> Q25
+  Q24 -->|"No"| Q24two["Before age 60: ≥2 immediate family with cancer/stroke/MI/angina/bypass/angioplasty/MS/MND/Alzheimer/dementia?"]:::question
+  Q24two -->|"No"| OUT24Day1[Outcome: Day1]:::outcome --> Q25
+  Q24two -->|"Yes"| Q24under50["Any dx before age 50?"]:::question
+  Q24under50 -->|"Yes"| OUT24Sig[Outcome: Signature]:::outcome --> Q25
+  Q24under50 -->|"No"| OUT24Day1p[Outcome: Day1+]:::outcome --> Q25
+
+  %% Q25 Travel/residency
+  Q25["Q25. Travel to high-risk/conflict regions in next 12 mo?"]:::question
+  Q25 -->|"Yes"| OUT25Gpp[Outcome: Guaranteed+]:::outcome --> End
+  Q25 -->|"No"| Q25res["Reside outside Canada ≥6 consecutive months in next 12 mo?"]:::question
+  Q25res -->|"No"| OUT25Day1[Outcome: Day1]:::outcome --> End
+  Q25res -->|"Yes"| OUT25Day1p[Outcome: Day1+]:::outcome --> End
+
+  End((End))
+
+  %% Class assignments
+  class Q1,Q2,Q2B,Q3,Q3a,Q3b,Q3c,Q4,Q4q,Q4comb,Q5,Q5mix,Q5freq,Q5age1,Q5age2,Q5age3,Q6,Q6when,Q6comb12,Q6comb25,Q6ecstasy,Q6howmany,Q6comb510,Q7,Q7alc,Q7yrsA,Q7yrsD,Q8,Q8age,Q8count,Q9,Q9mult,Q9inc,Q9yrs,Q10,Q10B,Q11,Q11bmi,Q11stable,Q11dx,Q11fu,Q11lt2,Q11ge2,Q12,Q12F,Q12F1,Q12F1a,Q12F1b,Q12F2,Q12F2a,Q12F3,Q12F3a,Q12F3b,Q12F4,Q12M,Q12M1,Q12M1a,Q12M1b,Q12M2,Q12M2b,Q13,Q14,Q15,Q15O2,Q15sleep,Q15asthma,Q15sev,Q15cpap,Q16,Q16M,Q16M2,Q16M3,Q16F,Q16F2,Q16F3,Q17,Q17szOnly,Q17comb,Q17szCount,Q17meds1,Q17comb2,Q17meds2,Q18,Q18meds,Q18mod,Q18comb,Q19,Q19bmi,Q19IBD,Q19fu,Q19sev,Q19bmiband,Q20,Q21,Q21prog,Q21age,Q21amb,Q22,Q22dep,Q22meds,Q22age,Q23,Q23hi,Q23mid,Q24,Q24two,Q24under50,Q25,Q25res question
+  class OUT6Decline,OUT9Decline,OUT9Decline2,OUT11Decline terminal
+  class FlagSmoker,FlagNonSmoker,FlagSmoker2,FlagNonSmoker2,Q18note flag
+  class OUT2aGpp,OUT2bDefp,OUT2cGpp,OUT2dDefp,OUT2eDefp,OUT3Defp,OUT3Sig,OUT3Day1,OUT3Gpp,OUT3Day1b,OUT4Day1,OUT4Day1b,OUT4Day1p,OUT4Gpp,OUT4Defp,OUT4Sig,OUT4Gpp2,OUT5Day1,OUT5Gpp,OUT5Defp,OUT5Sig,OUT5Sig2,OUT5Day1p,OUT5Day1p2,OUT5Day1b2,OUT6Day1,OUT6Gpp,OUT6Defp,OUT6Sig,OUT6Day1b,OUT6Day1p2b,OUT6Sig2,OUT6Day1p3,OUT6Day1c,OUT7Day1,OUT7Gpp,OUT7Defp,OUT7Sig,OUT7Day1p,OUT7Day1b2,OUT7Gpp2,OUT7Defp2,OUT7Sig2,OUT7Day1p2,OUT7Day1c,OUT8Day1,OUT8Gpp,OUT8Gpp2,OUT8Day1p,OUT9Day1,OUT9Gpp,OUT9Defp,OUT9Sig,OUT10AGpp,OUT10ADay1,OUT10BGpp,OUT10BDay1,OUT11Day1,OUT11Gpp_smoker_unstable,OUT11Defp,OUT11Gpp_age_smoker,OUT11Defp2,OUT11Sig_lt2,OUT11Defp_lt2,OUT11Gpp_lt2,OUT11Gpp_ge2_bmi_age,OUT11Defp_ge2_bmi,OUT11Gpp_ge2_else,OUT12FGpp,OUT12FDefp,OUT12F_Gpp2,OUT12FSig,OUT12FDefp2,OUT12FDay1p,OUT12MGpp,OUT12MDefp,OUT12M_Gpp2,OUT12MDay1p,OUT12MDay1,OUT13Day1,OUT13Defp,OUT14Day1,OUT14Gpp,OUT15Gpp,OUT15Defp,OUT15Day1,OUT15Day1p,OUT15Sig,OUT15Sig2,OUT15Day1p2,OUT16MDefp,OUT16MDay1,OUT16MDay1p,OUT16MDefp2,OUT16FDefp,OUT16FDay1,OUT16FDay1p,OUT16FDefp2,OUT17Day1,OUT17Gpp,OUT17Defp,OUT17Sig,OUT17Defp2,OUT17Gpp2,OUT18Defp,OUT18Sig,OUT18Day1,OUT18Defp2,OUT18Day1p,OUT19Day1,OUT19Gpp,OUT19Defp,OUT19Defp2,OUT19Sig,OUT20Day1,OUT20Sig,OUT21Day1,OUT21Gpp,OUT21Gpp2,OUT21Defp,OUT21Sig,OUT22Day1,OUT22Gpp,OUT22Sig,OUT22Day1p,OUT22Day1b,OUT23Day1,OUT23Gpp,OUT23Sig,OUT23Day1p,OUT24Defp,OUT24Day1,OUT24Sig,OUT24Day1p,OUT25Gpp,OUT25Day1,OUT25Day1p outcome
+
