@@ -651,7 +651,8 @@ export const QUESTIONS = new Map<string, QUESTION_TYPE>([
       id: "Q12F3",
       text: "Are you currently taking or have you been prescribed any medication to treat your diabetes?",
       answer_type: answerSchemas.boolean,
-      resulting_nodes: ["Q12F3a", "Q12F4"],
+      resulting_nodes: ["Q12F3a"],
+      resulting_plans: ["Day1+", "Deferred+", "Guaranteed+"],
     },
   ],
 
@@ -664,17 +665,6 @@ export const QUESTIONS = new Map<string, QUESTION_TYPE>([
       answer_type: answerSchemas.boolean,
       resulting_nodes: ["Q13"],
       resulting_plans: ["Deferred+", "Signature", "Guaranteed+", "Day1+"],
-    },
-  ],
-
-  // Q12F4: Not pregnant logic
-  [
-    "Q12F4",
-    {
-      id: "Q12F4",
-      text: "Not pregnant: apply same meds/HbA1c/BMI logic if meds later",
-      answer_type: answerSchemas.string,
-      resulting_nodes: ["Q13"],
     },
   ],
 
