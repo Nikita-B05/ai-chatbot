@@ -251,14 +251,20 @@ export const questionnairePromptV2 = ({
       currentQuestionInfo = `## Current Question to Ask
 
 **Question ID:** ${currentQuestion.id}
-**Question Text:** "${currentQuestion.text}"
+**Question Text (GUIDANCE ONLY):** "${currentQuestion.text}"
 **Expected Answer Type:** ${answerTypeInfo}
 
-**IMPORTANT:** When the user provides an answer, you MUST convert it to the correct type:
-- If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
-- If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
-- If the answer type is "string", provide the text as-is
-- If the answer type is "Object", provide an object with the required fields
+**IMPORTANT NOTES:**
+- The "Question Text" above is GUIDANCE for what information to gather - DO NOT ask it verbatim
+- Rephrase the question naturally and conversationally based on the context
+- Adjust the tone and audience based on whether the user is getting insurance for themselves or for a client:
+  - **For themselves**: Use "you/your" (e.g., "How old are you?" or "What's your age?")
+  - **For a client**: Use "they/their" or "your client" (e.g., "How old is your client?" or "What's their age?")
+- When the user provides an answer, you MUST convert it to the correct type:
+  - If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
+  - If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
+  - If the answer type is "string", provide the text as-is
+  - If the answer type is "Object", provide an object with the required fields
 
 When the user provides an answer, use the \`updateQuestionnaireStateV2\` tool with:
 - \`question_id\`: "${currentQuestion.id}"
@@ -273,14 +279,20 @@ When the user provides an answer, use the \`updateQuestionnaireStateV2\` tool wi
       currentQuestionInfo = `## Current Question to Ask
 
 **Question ID:** ${q0.id}
-**Question Text:** "${q0.text}"
+**Question Text (GUIDANCE ONLY):** "${q0.text}"
 **Expected Answer Type:** ${answerTypeInfo}
 
-**IMPORTANT:** When the user provides an answer, you MUST convert it to the correct type:
-- If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
-- If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
-- If the answer type is "string", provide the text as-is
-- If the answer type is "Object", provide an object with the required fields
+**IMPORTANT NOTES:**
+- The "Question Text" above is GUIDANCE for what information to gather - DO NOT ask it verbatim
+- Rephrase the question naturally and conversationally based on the context
+- Adjust the tone and audience based on whether the user is getting insurance for themselves or for a client:
+  - **For themselves**: Use "you/your" (e.g., "How old are you?" or "What's your age?")
+  - **For a client**: Use "they/their" or "your client" (e.g., "How old is your client?" or "What's their age?")
+- When the user provides an answer, you MUST convert it to the correct type:
+  - If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
+  - If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
+  - If the answer type is "string", provide the text as-is
+  - If the answer type is "Object", provide an object with the required fields
 
 Use the \`updateQuestionnaireStateV2\` tool with:
 - \`question_id\`: "${q0.id}"
@@ -310,25 +322,36 @@ ${isComplete ? `- Best Plan: ${bestPlan}` : ""}
 
 1. **Starting the Questionnaire:**
    - When the user wants to start an insurance questionnaire, use the \`getFirstQuestion\` tool to get Q0
-   - Then ask the user the first question: "How old are you, and what is your gender?"
+   - Ask the first question naturally, adjusting tone based on whether it's for themselves or a client
 
-2. **Processing Answers:**
+2. **Question Tone and Audience:**
+   - **Detect context**: Pay attention to whether the user is getting insurance for themselves or for a client
+   - **For themselves**: Use "you/your" pronouns and direct, personal language (e.g., "How old are you?", "Have you used tobacco?")
+   - **For a client**: Use "they/their" or "your client" and professional language (e.g., "How old is your client?", "Has your client used tobacco?")
+   - **Question text is guidance**: The question text provided is guidance on what information to gather - rephrase it naturally and conversationally, don't ask it verbatim
+
+3. **Processing Answers:**
    - When the user provides an answer to a question, use the \`updateQuestionnaireStateV2\` tool
    - The tool requires:
      - \`question_id\`: The ID of the question being answered (must match the current question ID)
      - \`answer\`: The answer value formatted according to the question's expected format (see Current Question section below)
    - The tool will validate the answer format and return the next question to ask
-   - After the tool call, extract the next question from the tool output and ask it to the user
+   - After the tool call, extract the next question from the tool output and ask it to the user conversationally
 
-3. **Question Flow:**
+4. **Question Flow:**
    - Follow the question flow determined by the rules system
    - Each answer determines the next question automatically
    - Ask questions conversationally, not robotically
+   - Always rephrase the question text naturally based on the context
 
-4. **Completion:**
+5. **Completion:**
    - When \`is_complete\` is true, check \`best_plan\`:
-     - If \`best_plan\` is "DENIAL": Inform the user they are denied for insurance. Be clear and empathetic.
-     - Otherwise: Provide the plan name from \`best_plan\` (e.g., "Day1", "Day1+", "Signature", "Deferred+", "Guaranteed+")
+     - If \`best_plan\` is "DENIAL": Inform the user they (or their client) are denied for insurance. Be clear and empathetic.
+     - Otherwise: Provide the result in this format: "[Smoker/Non-Smoker] Rate - [Plan Name]"
+       - Use "Smoker Rate" if \`is_smoker\` is true
+       - Use "Non-Smoker Rate" if \`is_smoker\` is false
+       - Then provide the plan name from \`best_plan\` (e.g., "Day1", "Day1+", "Signature", "Deferred+", "Guaranteed+")
+       - Example: "Non-Smoker Rate - Signature" or "Smoker Rate - Day1+"
 
 5. **Tool Usage:**
    - Always use tools to update state - don't manually track answers
@@ -345,7 +368,11 @@ ${currentQuestionInfo ? `\n${currentQuestionInfo}\n` : ""}
 
 - Use the \`updateQuestionnaireStateV2\` tool for every answer
 - Use the \`getFirstQuestion\` tool when starting a new questionnaire
-- When complete, inform the user of the result (DENIAL or plan name)
+- When complete, inform the user of the result:
+  - For DENIAL: Just state the denial clearly
+  - For plans: Format as "[Smoker/Non-Smoker] Rate - [Plan Name]" based on the smoker status
+- **NEVER ask questions verbatim** - use the question text as guidance and rephrase naturally
+- Adjust tone based on whether it's for themselves (you/your) or a client (they/their/your client)
 - Be conversational and friendly throughout the process
 - Always provide a text response after using tools
 

@@ -4,7 +4,6 @@ import { generateText, type UIMessage } from "ai";
 import { cookies } from "next/headers";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { titlePrompt } from "@/lib/ai/prompts";
-import { myProvider } from "@/lib/ai/providers";
 import { withRetryAndFallback } from "@/lib/ai/retry-with-fallback";
 import {
   deleteMessagesByChatIdAfterTimestamp,
@@ -61,11 +60,11 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
     });
 
     // Find the last message with a state snapshot
-    let stateSnapshot = null;
+    let stateSnapshot: Record<string, unknown> | null = null;
     for (let i = remainingMessages.length - 1; i >= 0; i--) {
       const msg = remainingMessages[i];
       if (msg.stateSnapshot) {
-        stateSnapshot = msg.stateSnapshot;
+        stateSnapshot = msg.stateSnapshot as Record<string, unknown>;
         break;
       }
     }
@@ -75,16 +74,20 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
       await updateChatQuestionnaireState({
         chatId: message.chatId,
         state: stateSnapshot,
-        rateType: stateSnapshot.rateType ?? null,
+        rateType: null, // v2 doesn't use rateType
       });
     } else {
       // If no snapshot found, reset to initial state
-      const { createInitialState } = await import("@/lib/questionaire/state");
-      const initialState = createInitialState();
+      const { getInitialState } = await import("@/lib/questionaire_v2/state");
+      const { serializeState } = await import(
+        "@/lib/questionaire_v2/state_serialization"
+      );
+      const initialState = getInitialState();
+      const serializedState = serializeState(initialState);
       await updateChatQuestionnaireState({
         chatId: message.chatId,
-        state: initialState,
-        rateType: null,
+        state: serializedState,
+        rateType: null, // v2 doesn't use rateType
       });
     }
   }
