@@ -1,13 +1,15 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { processQuestionAnswer } from "./state_manager";
 
 /**
  * Tool for generating a question answer object from user input
  * Takes a question_id and answer and returns them in the standardized format
+ * This tool also updates the client state with the answer
  */
 export const generateQuestionAnswer = tool({
   description:
-    "Generate a question answer object from user input. Use this tool when the user provides an answer to a question. The tool formats the question_id and answer into the required object structure.",
+    "Generate a question answer object from user input. Use this tool when the user provides an answer to a question. The tool formats the question_id and answer into the required object structure and updates the client state.",
   inputSchema: z.object({
     question_id: z
       .string()
@@ -29,9 +31,22 @@ export const generateQuestionAnswer = tool({
       ),
   }),
   execute: (input) => {
+    // Process the answer and update state
+    const nextQuestion = processQuestionAnswer(input.question_id, input.answer);
+
     return {
       question_id: input.question_id,
       answer: input.answer,
+      success: true,
+      next_question: nextQuestion
+        ? {
+            id: nextQuestion.id,
+            text: nextQuestion.text,
+          }
+        : null,
+      message: nextQuestion
+        ? `Answer recorded. Next question: ${nextQuestion.id}`
+        : "Answer recorded. No more questions.",
     };
   },
 });
