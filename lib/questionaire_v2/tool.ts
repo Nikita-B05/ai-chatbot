@@ -15,9 +15,17 @@ export const generateQuestionAnswer = tool({
         "The ID of the question being answered (e.g., 'Q1', 'Q2', 'Q3')"
       ),
     answer: z
-      .union([z.boolean(), z.number(), z.string()])
+      .union([
+        z.boolean(),
+        z.number(),
+        z.string(),
+        z.object({
+          height_cm: z.number().positive().min(50).max(300),
+          weight_kg: z.number().positive().min(20).max(500),
+        }),
+      ])
       .describe(
-        "The answer to the question. Can be a boolean, number, or string depending on the question type."
+        "The answer to the question. Can be a boolean, number, string, or an object with height_cm and weight_kg (for Q2). Height must be in centimeters (50-300 cm) and weight must be in kilograms (20-500 kg)."
       ),
   }),
   execute: (input) => {
