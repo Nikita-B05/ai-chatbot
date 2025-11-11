@@ -192,29 +192,60 @@ flowchart TD
   Q12F1a -->|"Complications = No"| Q12F1b["HbA1c ≥ 7.5% (last 3 mo)?"]:::question
   Q12F1b -->|"Yes"| OUT12FDefp[Outcome: Deferred+]:::outcome --> Q13
   Q12F1b -->|"No"| OUT12F_Gpp2[Outcome: Guaranteed+]:::outcome --> Q13
-  Q12F1 -->|"No (Type 2/gestational/other)"| Q12F2["If pregnant: Gestational only?"]:::question
-  Q12F2 -->|"Yes (Gestational only)"| Q12F2a["If BMI >40 OR CAD(Q11)=Yes → Guaranteed+. Else: HbA1c ≤ 7.0%?"]:::question
-  Q12F2a -->|"Yes ≤7%"| OUT12FSig[Outcome: Signature]:::outcome --> Q13
-  Q12F2a -->|"No >7%"| OUT12FDefp2[Outcome: Deferred+]:::outcome --> Q13
-  Q12F2 -->|"No"| Q12F3["On/prescribed diabetes meds?"]:::question
-  Q12F3 -->|"Yes"| Q12F3a["If age 18–24 OR CAD(Q11)=Yes → Deferred+. If BMI >40 → Guaranteed+. Else HbA1c ≥7.5%?"]:::question
-  Q12F3a -->|"HbA1c ≥7.5%"| Q12F3b["If BMI 38–39 → Deferred+; 36–37.9 → Signature; 18–36 → Day1+"]:::question --> Q13
-  Q12F3a -->|"HbA1c <7.5%"| OUT12FDay1p[Outcome: Day1+]:::outcome --> Q13
-  Q12F3 -->|"No"| Q12F4["Not pregnant: apply same meds/HbA1c/BMI logic if meds later"]:::question --> Q13
+  Q12F1 -->|"No (Type 2/gestational/other)"| Q12F_pregnant["Are you pregnant?"]:::question
+
+  Q12F_pregnant -->|"Yes"| Q12F_gestational_only["Have you been diagnosed with Gestational Diabetes only?"]:::question
+  Q12F_gestational_only -->|"Yes"| Q12F_yes_preg_yes_gest_check["If BMI > 40 OR CAD(Q11)=Yes"]:::question
+  Q12F_yes_preg_yes_gest_check -->|"Yes"| OUT12F_gpp1[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12F_yes_preg_yes_gest_check -->|"No"| Q12F_hba1c_lessthan7["Is your Gestational Diabetes currently under good control with HbA1c of less than or equal to 7%?"]:::question
+  Q12F_hba1c_lessthan7 -->|"Yes"| OUT12F_sig1[Outcome: Signature]:::outcome --> Q13
+  Q12F_hba1c_lessthan7 -->|"No"| OUT12F_defp1[Outcome: Deferred+]:::outcome --> Q13
+
+  Q12F_gestational_only -->|"No"| Q12F_meds_preg_nogest["Are you currently taking or have you been prescribed any medication to treat your diabetes?"]:::question
+  Q12F_meds_preg_nogest -->|"No"| OUT12F_day1p1[Outcome: Day1+]:::outcome --> Q13
+  Q12F_meds_preg_nogest -->|"Yes"| Q12F_preg_nogest_checks["Check client profile"]:::question
+  Q12F_preg_nogest_checks -->|"Age 18-24 OR Q11=Yes"| OUT12F_defp2[Outcome: Deferred+]:::outcome --> Q13
+  Q12F_preg_nogest_checks -->|"BMI > 40"| OUT12F_gpp2[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12F_preg_nogest_checks -->|"Otherwise"| Q12F_preg_nogest_hba1c_check["Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%?"]:::question
+  Q12F_preg_nogest_hba1c_check -->|"No"| OUT12F_day1p2[Outcome: Day1+]:::outcome --> Q13
+  Q12F_preg_nogest_hba1c_check -->|"Yes"| Q12F_preg_nogest_bmi_bands["Check BMI"]:::question
+  Q12F_preg_nogest_bmi_bands -->|"BMI 38-39"| OUT12F_defp3[Outcome: Deferred+]:::outcome --> Q13
+  Q12F_preg_nogest_bmi_bands -->|"BMI 36-37.9"| OUT12F_sig2[Outcome: Signature]:::outcome --> Q13
+  Q12F_preg_nogest_bmi_bands -->|"BMI 18-36"| OUT12F_day1p3[Outcome: Day1+]:::outcome --> Q13
+
+  Q12F_pregnant -->|"No"| Q12F_meds_nopreg["Are you currently taking or have you been prescribed any medication to treat your diabetes?"]:::question
+  Q12F_meds_nopreg -->|"No"| OUT12F_day1p4[Outcome: Day1+]:::outcome --> Q13
+  Q12F_meds_nopreg -->|"Yes"| Q12F_nopreg_checks["Check client profile"]:::question
+  Q12F_nopreg_checks -->|"Age 18-24 OR Q11=Yes"| OUT12F_defp4[Outcome: Deferred+]:::outcome --> Q13
+  Q12F_nopreg_checks -->|"BMI > 40"| OUT12F_gpp3[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12F_nopreg_checks -->|"Otherwise"| Q12F_nopreg_hba1c_check["Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%?"]:::question
+  Q12F_nopreg_hba1c_check -->|"No"| OUT12F_day1p5[Outcome: Day1+]:::outcome --> Q13
+  Q12F_nopreg_hba1c_check -->|"Yes"| Q12F_nopreg_bmi_bands["Check BMI"]:::question
+  Q12F_nopreg_bmi_bands -->|"BMI 38-39"| OUT12F_defp5[Outcome: Deferred+]:::outcome --> Q13
+  Q12F_nopreg_bmi_bands -->|"BMI 36-37.9"| OUT12F_sig3[Outcome: Signature]:::outcome --> Q13
+  Q12F_nopreg_bmi_bands -->|"BMI 18-36"| OUT12F_day1p6[Outcome: Day1+]:::outcome --> Q13
 
   Q12 --> Q12M["Male branch"]:::question
   Q12M -->|"Dx with diabetes/pre-diabetes?"| Q12M1["Type 1 diabetes?"]:::question
-  Q12M1 -->|"Yes"| Q12M1a["If BMI >40 OR CAD(Q11)=Yes → Guaranteed+. Complications?"]:::question
-  Q12M1a -->|"Complications = Yes"| OUT12MGpp[Outcome: Guaranteed+]:::outcome --> Q13
-  Q12M1a -->|"Complications = No"| Q12M1b["HbA1c ≥ 7.5% (last 3 mo)?"]:::question
-  Q12M1b -->|"Yes"| OUT12MDefp[Outcome: Deferred+]:::outcome --> Q13
-  Q12M1b -->|"No"| OUT12M_Gpp2[Outcome: Guaranteed+]:::outcome --> Q13
-  Q12M1 -->|"No"| Q12M2["On/prescribed diabetes meds? If age 18–24 OR CAD(Q11)=Yes → Deferred+. If BMI >40 → Guaranteed+. Else HbA1c ≥7.5%?"]:::question
-  Q12M2 -->|"HbA1c ≥7.5%"| Q12M2b["If BMI 38–39 → Deferred+; 36–37.9 → Signature; 18–36 → Day1+"]:::question --> Q13
-  Q12M2 -->|"HbA1c <7.5%"| OUT12MDay1p[Outcome: Day1+]:::outcome --> Q13
-  Q12M -->|"No diagnosis"| OUT12MDay1[Outcome: Day1]:::outcome --> Q13
+  Q12M1 -->|"Yes"| Q12M1_check_bmi_cad["If BMI > 40 OR CAD(Q11)=Yes"]:::question
+  Q12M1_check_bmi_cad -->|"Yes"| OUT12M_gpp1[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12M1_check_bmi_cad -->|"No"| Q12M1_complications["Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions, or nephropathy?"]:::question
+  Q12M1_complications -->|"Yes"| OUT12M_defp1[Outcome: Deferred+]:::outcome --> Q13
+  Q12M1_complications -->|"No"| OUT12M_gpp2[Outcome: Guaranteed+]:::outcome --> Q13
 
-  %% Q13 Cancer/lymphoma/malignancy last 10 years
+  Q12M1 -->|"No"| Q12M_no_t1_checks["Check client profile"]:::question
+  Q12M_no_t1_checks -->|"Age 18-24 OR Q11=Yes"| OUT12M_defp2[Outcome: Deferred+]:::outcome --> Q13
+  Q12M_no_t1_checks -->|"BMI > 40"| OUT12M_gpp3[Outcome: Guaranteed+]:::outcome --> Q13
+  Q12M_no_t1_checks -->|"Otherwise"| Q12M_hba1c_check["Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%?"]:::question
+  Q12M_hba1c_check -->|"No"| OUT12M_day1p1[Outcome: Day1+]:::outcome --> Q13
+  Q12M_hba1c_check -->|"Yes"| Q12M_bmi_bands["Check BMI"]:::question
+  Q12M_bmi_bands -->|"BMI 38-39"| OUT12M_defp3[Outcome: Deferred+]:::outcome --> Q13
+  Q12M_bmi_bands -->|"BMI 36-37.9"| OUT12M_sig1[Outcome: Signature]:::outcome --> Q13
+  Q12M_bmi_bands -->|"BMI 18-36"| OUT12M_day1p2[Outcome: Day1+]:::outcome --> Q13
+
+  Q12M -->|"No diagnosis"| OUT12MDay1[Outcome: Day1]:::outcome --> Q13
+ 
+   %% Q13 Cancer/lymphoma/malignancy last 10 years
   Q13["Q13. Cancer/tumor/lymphoma/leukemia/malignancy in last 10 years?"]:::question
   Q13 -->|"No"| OUT13Day1[Outcome: Day1]:::outcome --> Q14
   Q13 -->|"Yes"| OUT13Defp[Outcome: Deferred+]:::outcome --> Q14
@@ -228,21 +259,25 @@ flowchart TD
   Q15["Q15. SOB/emphysema/COPD/cystic fibrosis?"]:::question
   Q15 -->|"Yes"| Q15O2["On oxygen therapy in last 2 years?"]:::question
   Q15O2 -->|"Yes"| OUT15Gpp[Outcome: Guaranteed+]:::outcome --> Q16
-  Q15O2 -->|"No"| OUT15Defp[Outcome: Deferred+]:::outcome --> Q16
-  OUT15Defp -.-> Note15DefpEsc[Escalation - if CAD Q11 or Smoker then Guaranteed Plus]:::flag
+  Q15O2 -->|"No"| Q15_no_o2_check["If CAD(Q11)=Yes OR Smoker"]:::question
+  Q15_no_o2_check -->|"Yes"| OUT15Gpp2[Outcome: Guaranteed+]:::outcome --> Q16
+  Q15_no_o2_check -->|"No"| OUT15Defp[Outcome: Deferred+]:::outcome --> Q16
   Q15 -->|"No"| Q15sleep["Diagnosed/treated for sleep apnea?"]:::question
   Q15sleep -->|"No"| Q15asthma["Ever diagnosed with asthma or chronic bronchitis?"]:::question
   Q15asthma -->|"No"| OUT15Day1[Outcome: Day1]:::outcome --> Q16
   Q15asthma -->|"Yes"| Q15sev["Steroids, ≥2 daily inhalers, admitted/hospitalized (last 2y)?"]:::question
   Q15sev -->|"No"| OUT15Day1p[Outcome: Day1+]:::outcome --> Q16
-  Q15sev -->|"Yes"| OUT15Sig[Outcome: Signature]:::outcome --> Q16
-  OUT15Sig -.-> Note15SigEsc[Escalation - if Smoker then Deferred Plus]:::flag
+  Q15sev -->|"Yes"| Q15_asthma_sev_smoker_check["Client is a smoker?"]:::question
+  Q15_asthma_sev_smoker_check -->|"Yes"| OUT15Defp2[Outcome: Deferred+]:::outcome --> Q16
+  Q15_asthma_sev_smoker_check -->|"No"| OUT15Sig[Outcome: Signature]:::outcome --> Q16
   Q15sleep -->|"Yes"| Q15cpap["Use daily treatment (CPAP/BIPAP/oral appliance)?"]:::question
-  Q15cpap -->|"No"| OUT15Sig2[Outcome: Signature]:::outcome --> Q16
-  OUT15Sig2 -.-> Note15Sig2Esc[Escalation - if CAD Q11 then Deferred Plus]:::flag
-  Q15cpap -->|"Yes"| OUT15Day1p2[Outcome: Day1+]:::outcome --> Q16
-  OUT15Day1p2 -.-> Note15Day1p2Esc[Escalation - if CAD Q11 then Signature]:::flag
-
+  Q15cpap -->|"No"| Q15_no_cpap_cad_check["CAD(Q11)=Yes?"]:::question
+  Q15_no_cpap_cad_check -->|"Yes"| OUT15Defp3[Outcome: Deferred+]:::outcome --> Q16
+  Q15_no_cpap_cad_check -->|"No"| OUT15Sig2[Outcome: Signature]:::outcome --> Q16
+  Q15cpap -->|"Yes"| Q15_cpap_cad_check["CAD(Q11)=Yes?"]:::question
+  Q15_cpap_cad_check -->|"Yes"| OUT15Sig3[Outcome: Signature]:::outcome --> Q16
+  Q15_cpap_cad_check -->|"No"| OUT15Day1p2[Outcome: Day1+]:::outcome --> Q16
+ 
   %% Q16 Genitourinary (Male/Female)
   Q16["Q16. GU disorders"]:::question
   Q16 --> Q16M["Male: prostate/testes/kidney/nephritis/nephropathy/polycystic/other GU? (excl single non-obstructive stone/infection)"]:::question
@@ -268,10 +303,14 @@ flowchart TD
   Q17comb -->|"Q18 Yes"| OUT17Gpp[Outcome: Guaranteed+]:::outcome --> Q18
   Q17comb -->|"Q18 No"| OUT17Defp[Outcome: Deferred+]:::outcome --> Q18
   Q17szOnly -->|"Yes"| Q17szCount["Seizures in last 12 months?"]:::question
-  Q17szCount -->|"0"| Q17sz0["If Q18 Yes → Signature+; Otherwise Day1+"]:::question --> Q18
+  Q17szCount -->|"0"| Q17_sz0_q18_check["Q18 answered Yes?"]:::question
+  Q17_sz0_q18_check -->|"Yes"| OUT17Sig1[Outcome: Signature]:::outcome --> Q18
+  Q17_sz0_q18_check -->|"No"| OUT17Day1p1[Outcome: Day1+]:::outcome --> Q18
   Q17szCount -->|"1–3"| Q17meds1["Currently prescribed >1 medication?"]:::question
   Q17meds1 -->|"No"| OUT17Sig[Outcome: Signature]:::outcome --> Q18
-  Q17meds1 -->|"Yes"| Q17comb2["If Q18 Yes → Guaranteed+; Otherwise Deferred+"]:::question --> Q18
+  Q17meds1 -->|"Yes"| Q17_1to3_q18_check["Q18 answered Yes?"]:::question
+  Q17_1to3_q18_check -->|"Yes"| OUT17Gpp_1[Outcome: Guaranteed+]:::outcome --> Q18
+  Q17_1to3_q18_check -->|"No"| OUT17Defp_1[Outcome: Deferred+]:::outcome --> Q18
   Q17szCount -->|"4–6"| Q17meds2["Currently prescribed >1 medication?"]:::question
   Q17meds2 -->|"No"| OUT17Defp2[Outcome: Deferred+]:::outcome --> Q18
   Q17meds2 -->|"Yes"| OUT17Gpp2[Outcome: Guaranteed+]:::outcome --> Q18
@@ -300,7 +339,9 @@ flowchart TD
   Q19fu -->|"No"| OUT19Defp2[Outcome: Deferred+]:::outcome --> Q20
   Q19fu -->|"Yes"| Q19sev["≥2 surgeries in last 5y, missed work/school last 2y, hospitalized last 2y, or flare in last 12 mo?"]:::question
   Q19sev -->|"Yes"| OUT19Sig[Outcome: Signature]:::outcome --> Q20
-  Q19sev -->|"No"| Q19bmiband["If BMI 18–20 → Signature; Otherwise Day1+"]:::question --> Q20
+  Q19sev -->|"No"| Q19_bmi_check["BMI 18-20?"]:::question
+  Q19_bmi_check -->|"Yes"| OUT19Sig1[Outcome: Signature]:::outcome --> Q20
+  Q19_bmi_check -->|"No"| OUT19Day1p1[Outcome: Day1+]:::outcome --> Q20
 
   %% Q20 Endocrine/metabolic (excl controlled thyroid)
   Q20["Q20. Endocrine/metabolic (adrenal/parathyroid/pituitary/hormone/metabolic disorders)?"]:::question
@@ -358,7 +399,7 @@ flowchart TD
   End((End))
 
   %% Class assignments
-  class Q1,Q2,Q2B,Q3,Q3a,Q3b,Q3c,Q4,Q4q,Q4comb,Q5,Q5mix,Q5freq,Q5age1,Q5age2,Q5age3,Q6,Q6when,Q6comb12,Q6comb25,Q6ecstasy,Q6howmany,Q6comb510,Q7,Q7alc,Q7yrsA,Q7yrsD,Q8,Q8age,Q8count,Q9,Q9mult,Q9inc,Q9yrs,Q10,Q10B,Q11,Q11bmi,Q11stable,Q11dx,Q11fu,Q11lt2,Q11ge2,Q12,Q12F,Q12F1,Q12F1a,Q12F1b,Q12F2,Q12F2a,Q12F3,Q12F3a,Q12F3b,Q12F4,Q12M,Q12M1,Q12M1a,Q12M1b,Q12M2,Q12M2b,Q13,Q14,Q15,Q15O2,Q15sleep,Q15asthma,Q15sev,Q15cpap,Q16,Q16M,Q16M2,Q16M3,Q16F,Q16F2,Q16F3,Q17,Q17szOnly,Q17comb,Q17szCount,Q17meds1,Q17comb2,Q17meds2,Q18,Q18meds,Q18mod,Q18comb,Q19,Q19bmi,Q19IBD,Q19fu,Q19sev,Q19bmiband,Q20,Q21,Q21prog,Q21age,Q21amb,Q22,Q22dep,Q22meds,Q22age,Q23,Q23hi,Q23mid,Q24,Q24two,Q24under50,Q25,Q25res question
+  class Q1,Q2,Q2B,Q3,Q3a,Q3b,Q3c,Q4,Q4q,Q4comb,Q5,Q5mix,Q5freq,Q5age1,Q5age2,Q5age3,Q6,Q6when,Q6comb12,Q6comb25,Q6ecstasy,Q6howmany,Q6comb510,Q7,Q7alc,Q7yrsA,Q7yrsD,Q8,Q8age,Q8count,Q9,Q9mult,Q9inc,Q9yrs,Q10,Q10B,Q11,Q11bmi,Q11stable,Q11dx,Q11fu,Q11lt2,Q11ge2,Q12,Q12F,Q12F1,Q12F_pregnant,Q12F_gestational_only,Q12F_yes_preg_yes_gest_check,Q12F_hba1c_lessthan7,Q12F_meds_preg_nogest,Q12F_preg_nogest_checks,Q12F_preg_nogest_hba1c_check,Q12F_preg_nogest_bmi_bands,Q12F_meds_nopreg,Q12F_nopreg_checks,Q12F_nopreg_hba1c_check,Q12F_nopreg_bmi_bands,Q12M,Q12M1,Q12M1_check_bmi_cad,Q12M1_complications,Q12M_no_t1_checks,Q12M_hba1c_check,Q12M_bmi_bands,Q13,Q14,Q15,Q15O2,Q15_no_o2_check,Q15sleep,Q15asthma,Q15sev,Q15_asthma_sev_smoker_check,Q15cpap,Q15_no_cpap_cad_check,Q15_cpap_cad_check,Q16,Q16M,Q16M2,Q16M3,Q16F,Q16F2,Q16F3,Q17,Q17szOnly,Q17comb,Q17szCount,Q17_sz0_q18_check,Q17meds1,Q17_1to3_q18_check,Q17meds2,Q18,Q18meds,Q18mod,Q18comb,Q19,Q19bmi,Q19IBD,Q19fu,Q19sev,Q19_bmi_check,Q20,Q21,Q21prog,Q21age,Q21amb,Q22,Q22dep,Q22meds,Q22age,Q23,Q23hi,Q23mid,Q24,Q24two,Q24under50,Q25,Q25res question
   class OUT6Decline,OUT9Decline,OUT9Decline2,OUT11Decline terminal
   class FlagSmoker,FlagNonSmoker,FlagSmoker2,FlagNonSmoker2,Q18note flag
   class OUT2aGpp,OUT2bDefp,OUT2cGpp,OUT2dDefp,OUT2eDefp,OUT3Defp,OUT3Sig,OUT3Day1,OUT3Gpp,OUT3Day1b,OUT4Day1,OUT4Day1b,OUT4Day1p,OUT4Gpp,OUT4Defp,OUT4Sig,OUT4Gpp2,OUT5Day1,OUT5Gpp,OUT5Defp,OUT5Sig,OUT5Sig2,OUT5Day1p,OUT5Day1p2,OUT5Day1b2,OUT6Day1,OUT6Gpp,OUT6Defp,OUT6Sig,OUT6Day1b,OUT6Day1p2b,OUT6Sig2,OUT6Day1p3,OUT6Day1c,OUT7Day1,OUT7Gpp,OUT7Defp,OUT7Sig,OUT7Day1p,OUT7Day1b2,OUT7Gpp2,OUT7Defp2,OUT7Sig2,OUT7Day1p2,OUT7Day1c,OUT8Day1,OUT8Gpp,OUT8Gpp2,OUT8Day1p,OUT9Day1,OUT9Gpp,OUT9Defp,OUT9Sig,OUT10AGpp,OUT10ADay1,OUT10BGpp,OUT10BDay1,OUT11Day1,OUT11Gpp_smoker_unstable,OUT11Defp,OUT11Gpp_age_smoker,OUT11Defp2,OUT11Sig_lt2,OUT11Defp_lt2,OUT11Gpp_lt2,OUT11Gpp_ge2_bmi_age,OUT11Defp_ge2_bmi,OUT11Gpp_ge2_else,OUT12FGpp,OUT12FDefp,OUT12F_Gpp2,OUT12FSig,OUT12FDefp2,OUT12FDay1p,OUT12MGpp,OUT12MDefp,OUT12M_Gpp2,OUT12MDay1p,OUT12MDay1,OUT13Day1,OUT13Defp,OUT14Day1,OUT14Gpp,OUT15Gpp,OUT15Defp,OUT15Day1,OUT15Day1p,OUT15Sig,OUT15Sig2,OUT15Day1p2,OUT16MDefp,OUT16MDay1,OUT16MDay1p,OUT16MDefp2,OUT16FDefp,OUT16FDay1,OUT16FDay1p,OUT16FDefp2,OUT17Day1,OUT17Gpp,OUT17Defp,OUT17Sig,OUT17Defp2,OUT17Gpp2,OUT18Defp,OUT18Sig,OUT18Day1,OUT18Defp2,OUT18Day1p,OUT19Day1,OUT19Gpp,OUT19Defp,OUT19Defp2,OUT19Sig,OUT20Day1,OUT20Sig,OUT21Day1,OUT21Gpp,OUT21Gpp2,OUT21Defp,OUT21Sig,OUT22Day1,OUT22Gpp,OUT22Sig,OUT22Day1p,OUT22Day1b,OUT23Day1,OUT23Gpp,OUT23Sig,OUT23Day1p,OUT24Defp,OUT24Day1,OUT24Sig,OUT24Day1p,OUT25Gpp,OUT25Day1,OUT25Day1p outcome

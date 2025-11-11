@@ -614,7 +614,7 @@ export const QUESTIONS = new Map<string, QUESTION_TYPE>([
     "Q12F1b",
     {
       id: "Q12F1b",
-      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
+      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or less than or equal to 7.5%?",
       answer_type: answerSchemas.boolean,
       resulting_nodes: ["Q13"],
       resulting_plans: ["Deferred+", "Guaranteed+"],
@@ -637,7 +637,7 @@ export const QUESTIONS = new Map<string, QUESTION_TYPE>([
     "Q12F2a",
     {
       id: "Q12F2a",
-      text: "Is your Gestational Diabetes currently under good control with HbA1c or A1C result of 7.5% or less than or equal to 7%?",
+      text: "Is your Gestational Diabetes currently under good control with HbA1c less than or equal to 7%?",
       answer_type: answerSchemas.boolean,
       resulting_nodes: ["Q13"],
       resulting_plans: ["Guaranteed+", "Signature", "Deferred+"],
@@ -661,7 +661,7 @@ export const QUESTIONS = new Map<string, QUESTION_TYPE>([
     "Q12F3a",
     {
       id: "Q12F3a",
-      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
+      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%?",
       answer_type: answerSchemas.boolean,
       resulting_nodes: ["Q13"],
       resulting_plans: ["Deferred+", "Signature", "Guaranteed+", "Day1+"],
@@ -708,7 +708,7 @@ export const QUESTIONS = new Map<string, QUESTION_TYPE>([
     "Q12M1b",
     {
       id: "Q12M1b",
-      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
+      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%?",
       answer_type: answerSchemas.boolean,
       resulting_nodes: ["Q13"],
       resulting_plans: ["Deferred+", "Guaranteed+"],
@@ -732,7 +732,7 @@ export const QUESTIONS = new Map<string, QUESTION_TYPE>([
     "Q12M2b",
     {
       id: "Q12M2b",
-      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
+      text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%?",
       answer_type: answerSchemas.string,
       resulting_nodes: ["Q13"],
       resulting_plans: ["Deferred+", "Signature", "Day1+"],

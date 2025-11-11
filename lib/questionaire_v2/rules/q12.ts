@@ -131,7 +131,7 @@ export function apply_rule_Q12F2(): QUESTION_TYPE | null {
 }
 
 /**
- * Rule for Q12F2a: Is your Gestational Diabetes currently under good control with HbA1c or A1C result of 7.5% or less than or equal to 7%?
+ * Rule for Q12F2a: Is your Gestational Diabetes currently under good control with HbA1c of less than or equal to 7%?
  * @returns the next question on success
  * @returns null on error or out of questions
  */
@@ -206,7 +206,7 @@ export function apply_rule_Q12F3(): QUESTION_TYPE | null {
 }
 
 /**
- * Rule for Q12F3a: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more?
+ * Rule for Q12F3a: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or less?
  * @returns the next question on success
  * @returns null on error or out of questions
  */
@@ -399,7 +399,7 @@ export function apply_rule_Q12M2b(): QUESTION_TYPE | null {
 
   if (!answer) {
     // NO (HbA1c < 7.5%) -> Day1+ -> Q13
-    updateBestPlan("Day1+");
+    updateBestPlan("Deferred+");
     return getQuestion("Q13");
   }
 

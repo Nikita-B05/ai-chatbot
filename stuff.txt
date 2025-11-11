@@ -115,23 +115,23 @@
 	If YES > Were you diagnosed with Diabetes type 1? (diabetes1)
 		If YES > CHECK If BMI >40 OR YES TO CAD Q11 (CAD) > Guaranteed+, OTHERWISE Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions or nephropathy?
 			If YES > Guaranteed+ GO TO NEXT QUESTION
-			If NO > Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? If YES > Deferred+
+			If NO > Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or less than or equal to 7.5%? If YES > Deferred+
 				If NO > Guaranteed+
 		If NO > CHECK If YES TO PREGNANCY > Have you been diagnosed with Gestational Diabetes only?
 				If YES > CHECK If BMI >40 OR YES TO CAD Q11 (CAD) > Guaranteed+ GO TO NEXT QUESTION
-						OTHERWISE > Is your Gestational Diabetes currently under good control with HbA1c or A1C result of 7.5% or less than or equal to 7%? (diabetes2)
+						OTHERWISE > Is your Gestational Diabetes currently under good control with HbA1c or less than or equal to 7%? (diabetes2)
 							If YES > Signature
 							If NO > Deferred+
 				If NO > Are you currently taking or have you been prescribed any medication to treat your diabetes? (diabetes2) If YES >
 						CHECK If age 18 to 24 > OR YES TO Q11 (CAD) Deferred+ GO TO NEXT QUESTION
 						CHECK BMI >40 > Guaranteed+ GO TO NEXT QUESTION
-						OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? (diabetes3)
+						OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%? (diabetes3)
 							If YES > CHECK BMI 38-39.0 >Deferred+, 36-37.9 > Signature, 18-36 > Day1+
 								If NO > Deferred+
 							If NO > Day1+
 						CHECK If NO TO PREGNANCY > Are you currently taking or have you been prescribed any medication to treat your diabetes? (diabetes2) If YES > CHECK If age 18 to 24 > OR YES TO Q11 (CAD) Deferred+ GO TO NEXT QUESTION
 									CHECK BMI >40 > Guaranteed+ GO TO NEXT QUESTION
-									OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? (diabetes3)
+									OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or less than or equal to 7.5%? (diabetes3)
 										If YES > CHECK BMI 38-39.0 >Deferred+, 36-37.9 > Signature, 18-36 > Day1+
 											If NO > Deferred+
 										If NO > Day1+
@@ -141,11 +141,11 @@
 		If YES > Were you diagnosed with Diabetes type 1? (diabetes7)
 			If YES > CHECK BMI > 40 OR YES TO CAD Q11 Guaranteed+ OTHERWISE: Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions, or nephropathy?
 				If YES > Guaranteed+ GO TO NEXT QUESTION
-				If NO > Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? If YES > Deferred+
+				If NO > Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%? If YES > Deferred+
 						If NO > Guaranteed+
 			If NO > Are you currently taking or have you been prescribed any medication to treat your diabetes? (diabetes2) If YES > CHECK If age 18 to 24 > OR YES TO Q11 (CAD) Deferred+ GO TO NEXT QUESTION
 					CHECK BMI >40 > Guaranteed+ GO TO NEXT QUESTION
-					OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%? (diabetes3)
+					OTHERWISE: Have you monitored your blood sugar levels in the last 3 months with an average HbA1c of less than or equal to 7.5%? (diabetes3)
 						If YES > CHECK BMI 38-39.0 >Deferred+, 36-37.9 > Signature, 18-36 > Day1+
 							If NO > Deferred+
 						If NO > Day1+
