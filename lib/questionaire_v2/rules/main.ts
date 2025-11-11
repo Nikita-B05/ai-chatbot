@@ -1,7 +1,13 @@
 import { getQuestion, type QUESTION_TYPE } from "../question_definitions";
 import { apply_rule_Q0 } from "./q0";
 import { apply_rule_Q1 } from "./q1";
-import { apply_rule_Q2 } from "./q2";
+import {
+  apply_rule_Q2,
+  apply_rule_Q2Birth,
+  apply_rule_Q2PrePregnancyWeight,
+  apply_rule_Q2Pregnancy,
+  apply_rule_Q2WeightLoss,
+} from "./q2";
 import {
   apply_rule_Q3,
   apply_rule_Q3a,
@@ -45,7 +51,6 @@ import {
   apply_rule_Q12F2a,
   apply_rule_Q12F3,
   apply_rule_Q12F3a,
-  apply_rule_Q12F4,
   apply_rule_Q12M,
   apply_rule_Q12M1,
   apply_rule_Q12M1a,
@@ -111,11 +116,13 @@ export function apply_rule(question: QUESTION_TYPE): QUESTION_TYPE | null {
     case "Q2":
       return apply_rule_Q2();
     case "Q2Pregnancy":
+      return apply_rule_Q2Pregnancy();
     case "Q2Birth":
+      return apply_rule_Q2Birth();
     case "Q2PrePregnancyWeight":
+      return apply_rule_Q2PrePregnancyWeight();
     case "Q2WeightLoss":
-      // These all route to Q3
-      return getQuestion("Q3");
+      return apply_rule_Q2WeightLoss();
     case "Q3":
       return apply_rule_Q3();
     case "Q3a":
@@ -190,8 +197,6 @@ export function apply_rule(question: QUESTION_TYPE): QUESTION_TYPE | null {
       return apply_rule_Q12F3();
     case "Q12F3a":
       return apply_rule_Q12F3a();
-    case "Q12F4":
-      return apply_rule_Q12F4();
     case "Q12M":
       return apply_rule_Q12M();
     case "Q12M1":

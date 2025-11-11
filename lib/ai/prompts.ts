@@ -308,8 +308,8 @@ Use the \`updateQuestionnaireStateV2\` tool with:
 **Demographics:**
 - Age: ${deserializedState.age ?? "Not provided"}
 - Gender: ${deserializedState.gender ?? "Not provided"}
-- Height: ${deserializedState.height_cm ? `${deserializedState.height_cm} cm` : "Not provided"}
-- Weight: ${deserializedState.weight_kg ? `${deserializedState.weight_kg} kg` : "Not provided"}
+- Height: ${deserializedState.height_cm ? `${deserializedState.height_cm} cm` : "Not provided"} if the user provided height in inches, simply convert it to centimeters internally
+- Weight: ${deserializedState.weight_kg ? `${deserializedState.weight_kg} kg` : "Not provided"} if the user provided weight in pounds, simply convert it to kilograms internally
 - Smoker: ${deserializedState.is_smoker !== null ? (deserializedState.is_smoker ? "Yes" : "No") : "Not provided"}
 
 **Progress:**

@@ -53,3 +53,20 @@ export function apply_rule_Q2(): QUESTION_TYPE | null {
   updateBestPlan("Guaranteed+");
   return getQuestion("Q3");
 }
+
+export function apply_rule_Q2Pregnancy(): QUESTION_TYPE | null {
+  return getQuestion("Q3");
+}
+
+export function apply_rule_Q2Birth(): QUESTION_TYPE | null {
+  return getQuestion("Q3");
+}
+
+export function apply_rule_Q2PrePregnancyWeight(): QUESTION_TYPE | null {
+  return getQuestion("Q3");
+}
+
+export function apply_rule_Q2WeightLoss(): QUESTION_TYPE | null {
+  updateBestPlan("Deferred+")
+  return getQuestion("Q3");
+}
