@@ -23,7 +23,7 @@ import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import type { ChatModel } from "@/lib/ai/models";
 import {
-  questionnairePrompt,
+  questionnairePromptV2,
   type RequestHints,
   systemPrompt,
 } from "@/lib/ai/prompts";
@@ -49,11 +49,15 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
-import { getAvailableQuestionsForLLM } from "@/lib/questionaire/router";
-import { applyAutoIntakeFromMessage } from "@/lib/questionaire/intake";
-import { calculateBMI, createInitialState } from "@/lib/questionaire/state";
-import { updateQuestionnaireState } from "@/lib/questionaire/tool";
-import type { QuestionnaireClientState } from "@/lib/questionaire/types";
+import { getInitialState } from "@/lib/questionaire_v2/state";
+import {
+  deserializeState,
+  serializeState,
+} from "@/lib/questionaire_v2/state_serialization";
+import {
+  getFirstQuestion,
+  updateQuestionnaireStateV2,
+} from "@/lib/questionaire_v2/tool_wrapper";
 import { checkChatRateLimit } from "@/lib/rate-limit";
 import type { ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
@@ -182,7 +186,7 @@ export async function POST(request: Request) {
     let messagesFromDb: DBMessage[] = [];
 
     // Initialize questionnaire state if in questionnaire mode
-    let questionnaireState: QuestionnaireClientState | null = null;
+    let questionnaireState: Record<string, unknown> | null = null;
     let isQuestionnaireMode = false;
 
     if (chat) {
@@ -195,13 +199,16 @@ export async function POST(request: Request) {
       // Check if chat is in questionnaire mode
       isQuestionnaireMode = chat.questionaireMode ?? false;
       if (isQuestionnaireMode) {
-        questionnaireState = chat.clientState ?? createInitialState();
-        if (questionnaireState) {
-          logQuestionnaireDebug("Loaded questionnaire state", {
-            chatId: id,
-            state: questionnaireState,
-          });
+        // Deserialize state from database
+        if (chat.clientState) {
+          questionnaireState = chat.clientState as Record<string, unknown>;
+        } else {
+          questionnaireState = serializeState(getInitialState());
         }
+        logQuestionnaireDebug("Loaded questionnaire state", {
+          chatId: id,
+          state: questionnaireState,
+        });
       }
     } else {
       const title = await generateTitleFromUserMessage({
@@ -295,29 +302,33 @@ export async function POST(request: Request) {
             detectionResult.object.confidence > threshold
           ) {
             // Enable questionnaire mode
-            const initialState = createInitialState();
+            const initialState = getInitialState();
 
             // Extract and set demographics if provided
             if (detectionResult.object.demographics) {
               const { age, gender, height, weight } =
                 detectionResult.object.demographics;
-              if (age) initialState.age = age;
-              if (gender) initialState.gender = gender;
-              if (height) initialState.height = height;
-              if (weight) initialState.weight = weight;
-
-              // Calculate BMI if height and weight are both provided
-              if (height && weight) {
-                initialState.bmi = calculateBMI(height, weight);
+              if (age) {
+                initialState.age = age;
+              }
+              if (gender) {
+                initialState.gender = gender.toUpperCase() as "MALE" | "FEMALE";
+              }
+              if (height) {
+                initialState.height_cm = height;
+              }
+              if (weight) {
+                initialState.weight_kg = weight;
               }
             }
 
+            const serializedState = serializeState(initialState);
             await enableChatQuestionnaireMode({
               chatId: id,
-              initialState,
+              initialState: serializedState,
             });
             isQuestionnaireMode = true;
-            questionnaireState = initialState;
+            questionnaireState = serializedState;
             logQuestionnaireDebug(
               "Initialized questionnaire state from detection result",
               {
@@ -334,13 +345,14 @@ export async function POST(request: Request) {
             "Questionnaire detection failed, but keyword matched. Enabling questionnaire mode:",
             error
           );
-          const initialState = createInitialState();
+          const initialState = getInitialState();
+          const serializedState = serializeState(initialState);
           await enableChatQuestionnaireMode({
             chatId: id,
-            initialState,
+            initialState: serializedState,
           });
           isQuestionnaireMode = true;
-          questionnaireState = initialState;
+          questionnaireState = serializedState;
           logQuestionnaireDebug(
             "Initialized questionnaire state via keyword fallback",
             {
@@ -353,24 +365,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (isQuestionnaireMode && questionnaireState) {
-      const intakeResult = applyAutoIntakeFromMessage(
-        questionnaireState,
-        messageText
-      );
-      questionnaireState = intakeResult.state;
-
-      if (
-        intakeResult.answeredQuestions.length > 0 ||
-        Object.keys(intakeResult.demographicsUpdated).length > 0
-      ) {
-        logQuestionnaireDebug("Applied auto-intake from user message", {
-          chatId: id,
-          answeredQuestions: intakeResult.answeredQuestions,
-          demographicsUpdated: intakeResult.demographicsUpdated,
-        });
-      }
-    }
+    // Note: Auto-intake removed for questionaire_v2 - answers are handled via tool calls
 
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
 
@@ -385,6 +380,12 @@ export async function POST(request: Request) {
 
     // Save user message with state snapshot if in questionnaire mode
     if (isQuestionnaireMode && questionnaireState) {
+      console.log("[Questionnaire V2] Saving USER message with state", {
+        chatId: id,
+        messageId: message.id,
+        role: "user",
+        state: questionnaireState,
+      });
       await saveMessageWithStateSnapshot({
         message: {
           chatId: id,
@@ -420,7 +421,7 @@ export async function POST(request: Request) {
     let finalMergedUsage: AppUsage | undefined;
 
     // Track questionnaire state updates
-    let updatedQuestionnaireState: QuestionnaireClientState | null =
+    let updatedQuestionnaireState: Record<string, unknown> | null =
       questionnaireState;
 
     // Determine system prompt and tools based on questionnaire mode
@@ -430,35 +431,30 @@ export async function POST(request: Request) {
       | "createDocument"
       | "updateDocument"
       | "requestSuggestions"
-      | "updateQuestionnaireState"
+      | "updateQuestionnaireStateV2"
+      | "getFirstQuestion"
     >;
     const allTools = {
       getWeather,
     };
-    let availableQuestionsForLLM:
-      | ReturnType<typeof getAvailableQuestionsForLLM>
-      | undefined;
 
     if (isQuestionnaireMode && updatedQuestionnaireState) {
-      availableQuestionsForLLM = getAvailableQuestionsForLLM(
-        updatedQuestionnaireState
-      );
-      systemPromptText = questionnairePrompt({
+      // Use questionaire_v2 prompt
+      systemPromptText = questionnairePromptV2({
         selectedChatModel,
         requestHints,
         state: updatedQuestionnaireState,
-        availableQuestions: availableQuestionsForLLM,
       });
       activeTools = [
-        "updateQuestionnaireState",
+        "updateQuestionnaireStateV2",
+        "getFirstQuestion",
         "createDocument",
         "updateDocument",
         "requestSuggestions",
       ];
-      logQuestionnaireDebug("Prepared questionnaire prompt context", {
+      logQuestionnaireDebug("Prepared questionnaire v2 prompt context", {
         chatId: id,
         state: updatedQuestionnaireState,
-        availableQuestions: availableQuestionsForLLM,
       });
     } else {
       systemPromptText = systemPrompt({ selectedChatModel, requestHints });
@@ -474,23 +470,6 @@ export async function POST(request: Request) {
       activeTools,
       messages: modelMessages,
       questionnaireState: updatedQuestionnaireState,
-      availableQuestions: availableQuestionsForLLM?.map(
-        ({
-          id: questionId,
-          available,
-          answered,
-          asked,
-          priority,
-          queuePosition,
-        }) => ({
-          id: questionId,
-          available,
-          answered,
-          asked,
-          priority,
-          queuePosition,
-        })
-      ),
     });
 
     const stream = createUIMessageStream({
@@ -506,21 +485,27 @@ export async function POST(request: Request) {
           }),
           ...(isQuestionnaireMode && updatedQuestionnaireState
             ? {
-                updateQuestionnaireState: updateQuestionnaireState({
+                updateQuestionnaireStateV2: updateQuestionnaireStateV2({
                   currentState: updatedQuestionnaireState,
                   onStateUpdate: (newState) => {
                     updatedQuestionnaireState = newState;
-                    logQuestionnaireDebug("Questionnaire state updated via tool", {
-                      chatId: id,
-                      state: newState,
-                    });
+                    logQuestionnaireDebug(
+                      "Questionnaire v2 state updated via tool",
+                      {
+                        chatId: id,
+                        state: newState,
+                      }
+                    );
                   },
+                  chatId: id,
                 }),
+                getFirstQuestion,
               }
             : {}),
         };
 
-        let result;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let result: any;
         let usedFallback = false;
         try {
           result = streamText({
@@ -542,12 +527,12 @@ export async function POST(request: Request) {
                 const modelId = usedFallback
                   ? myProvider.languageModel("fallback-model").modelId
                   : myProvider.languageModel(selectedChatModel).modelId;
-                
+
                 // Log API usage for verification
                 console.log(
                   `[Gemini API] Model: ${modelId || "unknown"}, Tokens: ${usage.inputTokens || 0} input + ${usage.outputTokens || 0} output = ${usage.totalTokens || 0} total`
                 );
-                
+
                 if (!modelId) {
                   finalMergedUsage = usage;
                   dataStream.write({
@@ -579,7 +564,10 @@ export async function POST(request: Request) {
               } catch (err) {
                 console.warn("TokenLens enrichment failed", err);
                 finalMergedUsage = usage;
-                dataStream.write({ type: "data-usage", data: finalMergedUsage });
+                dataStream.write({
+                  type: "data-usage",
+                  data: finalMergedUsage,
+                });
               }
             },
           });
@@ -676,12 +664,28 @@ export async function POST(request: Request) {
       onFinish: async ({ messages }) => {
         // Save assistant messages with state snapshots if in questionnaire mode
         if (isQuestionnaireMode && updatedQuestionnaireState) {
-          logQuestionnaireDebug("Persisting questionnaire state", {
-            chatId: id,
-            state: updatedQuestionnaireState,
-          });
+          console.log(
+            "[Questionnaire V2] Saving ASSISTANT messages with state",
+            {
+              chatId: id,
+              messageCount: messages.length,
+              state: updatedQuestionnaireState,
+            }
+          );
 
           for (const currentMessage of messages) {
+            console.log(
+              `[Questionnaire V2] Saving message ${currentMessage.id}`,
+              {
+                chatId: id,
+                messageId: currentMessage.id,
+                role: currentMessage.role,
+                state:
+                  currentMessage.role === "assistant"
+                    ? updatedQuestionnaireState
+                    : null,
+              }
+            );
             await saveMessageWithStateSnapshot({
               message: {
                 id: currentMessage.id,
@@ -703,8 +707,22 @@ export async function POST(request: Request) {
           await updateChatQuestionnaireState({
             chatId: id,
             state: updatedQuestionnaireState,
-            rateType: updatedQuestionnaireState.rateType ?? null,
           });
+
+          // Check if questionnaire is complete and log result
+          const deserializedState = deserializeState(
+            updatedQuestionnaireState as Record<string, unknown>
+          );
+          if (deserializedState.is_complete) {
+            console.log(
+              `[Questionnaire V2] Questionnaire complete for chat ${id}`,
+              {
+                best_plan: deserializedState.best_plan,
+                answered_questions: deserializedState.answered_questions,
+                is_denied: deserializedState.best_plan === "DENIAL",
+              }
+            );
+          }
         } else {
           // Normal message saving
           await saveMessages({

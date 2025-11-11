@@ -18,7 +18,6 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
-import type { QuestionnaireClientState } from "../questionaire/types";
 import { generateUUID } from "../utils";
 import {
   type Chat,
@@ -135,7 +134,7 @@ export async function deleteAllChatsByUserId({ userId }: { userId: string }) {
       return { deletedCount: 0 };
     }
 
-    const chatIds = userChats.map(c => c.id);
+    const chatIds = userChats.map((c) => c.id);
 
     await db.delete(vote).where(inArray(vote.chatId, chatIds));
     await db.delete(message).where(inArray(message.chatId, chatIds));
@@ -244,11 +243,7 @@ export async function getChatById({ id }: { id: string }) {
   }
 }
 
-export async function saveMessages({
-  messages,
-}: {
-  messages: DBMessage[];
-}) {
+export async function saveMessages({ messages }: { messages: DBMessage[] }) {
   try {
     return await db.insert(message).values(messages);
   } catch (_error) {
@@ -265,7 +260,7 @@ export async function saveMessageWithStateSnapshot({
   answeredQuestionId,
 }: {
   message: Omit<DBMessage, "stateSnapshot" | "answeredQuestionId">;
-  stateSnapshot?: QuestionnaireClientState | null;
+  stateSnapshot?: Record<string, unknown> | null;
   answeredQuestionId?: string | null;
 }) {
   try {
@@ -290,7 +285,7 @@ export async function enableChatQuestionnaireMode({
   initialState,
 }: {
   chatId: string;
-  initialState: QuestionnaireClientState;
+  initialState: Record<string, unknown>;
 }) {
   try {
     return await db
@@ -317,12 +312,12 @@ export async function updateChatQuestionnaireState({
   rateType,
 }: {
   chatId: string;
-  state: QuestionnaireClientState;
+  state: Record<string, unknown>;
   rateType?: "SMOKER" | "NON_SMOKER" | null;
 }) {
   try {
     const updateData: {
-      clientState: QuestionnaireClientState;
+      clientState: Record<string, unknown>;
       rateType?: "SMOKER" | "NON_SMOKER" | null;
     } = {
       clientState: state,
@@ -348,7 +343,7 @@ export async function getStateSnapshotByMessageId({
   messageId,
 }: {
   messageId: string;
-}): Promise<QuestionnaireClientState | null> {
+}): Promise<Record<string, unknown> | null> {
   try {
     const [msg] = await db
       .select({ stateSnapshot: message.stateSnapshot })
@@ -372,14 +367,14 @@ export async function getLastStateSnapshot({
   chatId,
 }: {
   chatId: string;
-}): Promise<QuestionnaireClientState | null> {
+}): Promise<Record<string, unknown> | null> {
   try {
     const [msg] = await db
       .select({ stateSnapshot: message.stateSnapshot })
       .from(message)
       .where(
         and(
-          eq(message.chatId, chatId),
+          eq(message.chatId, chatId)
           // Only get messages with state snapshots
           // Note: This requires a proper SQL check, but drizzle doesn't support IS NOT NULL easily
           // We'll filter in the application layer

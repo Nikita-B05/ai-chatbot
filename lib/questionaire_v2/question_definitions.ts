@@ -88,11 +88,11 @@ export function getQuestion(id: string): QUESTION_TYPE | null {
 export function updateBestPlan(plan: PLANS | "DENIAL"): void {
   const PLAN_PRIORITY: Record<PLANS | "DENIAL", number> = {
     DENIAL: 0,
-    "Deferred+": 1,
-    "Guaranteed+": 2,
-    Day1: 3,
+    "Guaranteed+": 1,
+    "Deferred+": 2,
+    Signature: 3,
     "Day1+": 4,
-    Signature: 5,
+    Day1: 5,
   };
 
   if (PLAN_PRIORITY[plan] < PLAN_PRIORITY[clientState.best_plan]) {

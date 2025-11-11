@@ -43,7 +43,17 @@ export function processQuestionAnswer(
   }
 
   // Apply rule logic to determine next question
-  return apply_rule(question);
+  const nextQuestion = apply_rule(question);
+
+  // Update current_question_id to the next question
+  if (nextQuestion) {
+    clientState.current_question_id = nextQuestion.id;
+  } else {
+    clientState.current_question_id = null;
+    clientState.is_complete = true;
+  }
+
+  return nextQuestion;
 }
 
 /**
@@ -109,6 +119,7 @@ export function resetState(): void {
   clientState.height_cm = null;
   clientState.weight_kg = null;
   clientState.answered_questions = [];
+  clientState.current_question_id = "Q0";
   clientState.is_complete = false;
   clientState.best_plan = "Day1";
   clientState.question_answers.clear();

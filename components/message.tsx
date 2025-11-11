@@ -272,6 +272,49 @@ const PurePreviewMessage = ({
               );
             }
 
+            if (
+              type === "tool-updateQuestionnaireStateV2" ||
+              type === "tool-getFirstQuestion"
+            ) {
+              const { toolCallId, state } = part;
+
+              return (
+                <Tool defaultOpen={true} key={toolCallId}>
+                  <ToolHeader
+                    state={state}
+                    type={
+                      type === "tool-updateQuestionnaireStateV2"
+                        ? "tool-updateQuestionnaireStateV2"
+                        : "tool-getFirstQuestion"
+                    }
+                  />
+                  <ToolContent>
+                    {state === "input-available" && (
+                      <ToolInput input={part.input} />
+                    )}
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={undefined}
+                        output={
+                          "error" in part.output ? (
+                            <div className="rounded border p-2 text-red-500">
+                              Error: {String(part.output.error)}
+                            </div>
+                          ) : (
+                            <div className="rounded border p-4">
+                              <pre className="whitespace-pre-wrap text-sm">
+                                {JSON.stringify(part.output, null, 2)}
+                              </pre>
+                            </div>
+                          )
+                        }
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
             return null;
           })}
 

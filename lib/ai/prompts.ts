@@ -1,5 +1,6 @@
 import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/artifact";
+import { getQuestion } from "@/lib/questionaire_v2/question_definitions";
 
 // export const artifactsPrompt = `
 // Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
@@ -51,7 +52,6 @@ About the origin of user's request:
 `;
 
 export const systemPrompt = ({
-  selectedChatModel,
   requestHints,
 }: {
   selectedChatModel: string;
@@ -116,203 +116,155 @@ export const titlePrompt = `\n
     - the title should be a summary of the user's message
     - do not use quotes or colons`;
 
-export type QuestionnairePromptParams = {
+export type QuestionnairePromptV2Params = {
   selectedChatModel: string;
   requestHints: RequestHints;
-  state: import("@/lib/questionaire/types").QuestionnaireClientState;
-  availableQuestions: import("@/lib/questionaire/router").AvailableQuestionInfo[];
+  state: Record<string, unknown>;
 };
 
-export const questionnairePrompt = ({
-  selectedChatModel,
+export const questionnairePromptV2 = ({
   requestHints,
   state,
-  availableQuestions,
-}: QuestionnairePromptParams): string => {
+}: QuestionnairePromptV2Params): string => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
-  // Format available questions for display
-  const mandatoryQuestions = availableQuestions.filter(
-    (q) => q.priority === "mandatory" && !q.answered
-  );
-  const priorityFollowUps = availableQuestions
-    .filter((q) => q.priority === "follow-up")
-    .sort((a, b) => {
-      const aPos = a.queuePosition ?? Number.MAX_SAFE_INTEGER;
-      const bPos = b.queuePosition ?? Number.MAX_SAFE_INTEGER;
-      return aPos - bPos;
-    });
-  const fallbackQuestions = availableQuestions.filter(
-    (q) => q.priority === "fallback" && !q.answered
-  );
-  const otherAvailableQuestions = availableQuestions.filter(
-    (q) => q.priority === "standard" && q.available && !q.answered
-  );
-  const answeredQuestions = availableQuestions.filter((q) => q.answered);
-  const pendingQuestions = availableQuestions.filter(
-    (q) =>
-      !q.available &&
-      !q.answered &&
-      q.dependenciesMet &&
-      q.priority !== "follow-up"
-  );
-
-  // Build question list text
-  const formatQuestionList = (questions: typeof availableQuestions) => {
-    if (questions.length === 0) return "None";
-    return questions
-      .map((q) => {
-        const depsText =
-          q.dependencies.length > 0
-            ? ` (depends on: ${q.dependencies.join(", ")})`
-            : "";
-        const tags: string[] = [];
-
-        if (q.worstOutcome === "DECLINE") {
-          tags.push("IMPACT: DECLINE");
-        } else if (q.worstOutcome) {
-          tags.push(`IMPACT: ≤ ${q.worstOutcome}`);
-        } else if (!q.impactsPlan) {
-          tags.push("NO PLAN IMPACT");
-        }
-
-        if (q.priority === "mandatory" && !q.answered) {
-          tags.push("MANDATORY");
-        }
-        if (q.priority === "follow-up") {
-          if (q.queuePosition) {
-            tags.push(`QUEUE #${q.queuePosition}`);
-          } else {
-            tags.push("FOLLOW-UP");
-          }
-        }
-        if (q.priority === "fallback" && !q.answered) {
-          tags.push("FALLBACK");
-        }
-        if (q.available && !q.answered) {
-          tags.push("AVAILABLE");
-        } else if (!q.available && q.dependenciesMet && !q.answered) {
-          tags.push("READY");
-        }
-        if (q.asked && !q.answered) {
-          tags.push("ASKED");
-        }
-        if (q.answered) {
-          tags.push("ANSWERED");
-        }
-
-        const statusText = tags.length > 0 ? ` [${tags.join(", ")}]` : "";
-
-        return `- ${q.id}: ${q.description}${depsText}${statusText}`;
-      })
-      .join("\n");
+  // Deserialize state to get readable values
+  const deserializedState = state as {
+    age: number | null;
+    gender: "MALE" | "FEMALE" | null;
+    is_smoker: boolean | null;
+    height_cm: number | null;
+    weight_kg: number | null;
+    answered_questions: string[];
+    current_question_id: string | null;
+    is_complete: boolean;
+    best_plan: string;
+    question_answers: Record<string, unknown>;
   };
 
-  const bestPlanText =
-    state.recommendedPlan === "DECLINE"
-      ? "DECLINE (no eligible plans)"
-      : state.recommendedPlan ?? "Not determined";
+  const answeredQuestions = deserializedState.answered_questions ?? [];
+  const isComplete = deserializedState.is_complete ?? false;
+  const bestPlan = deserializedState.best_plan ?? "Day1";
+  const currentQuestionId = deserializedState.current_question_id;
+
+  // Get the current question to ask (if not complete)
+  let currentQuestionInfo = "";
+  if (!isComplete && currentQuestionId) {
+    const currentQuestion = getQuestion(currentQuestionId);
+    if (currentQuestion) {
+      // Get answer schema description
+      let answerFormatDescription = "";
+      try {
+        // Try to get description from zod schema
+        const schemaDef = currentQuestion.answer_type as {
+          description?: () => string;
+          _def?: { description?: string };
+        };
+        if (schemaDef.description) {
+          answerFormatDescription = schemaDef.description();
+        } else if (schemaDef._def?.description) {
+          answerFormatDescription = schemaDef._def.description;
+        } else if (currentQuestionId === "Q0") {
+          // Fallback: describe based on type
+          answerFormatDescription =
+            'Object with age (number 18-150) and gender ("MALE" | "FEMALE")';
+        } else if (currentQuestionId === "Q2") {
+          answerFormatDescription =
+            "Object with height_cm (number 50-300) and weight_kg (number 20-500)";
+        } else {
+          answerFormatDescription = "Check question definition for format";
+        }
+      } catch {
+        answerFormatDescription = "See tool schema for format";
+      }
+
+      currentQuestionInfo = `## Current Question to Ask
+
+**Question ID:** ${currentQuestion.id}
+**Question Text:** "${currentQuestion.text}"
+**Expected Answer Format:** ${answerFormatDescription}
+
+When the user provides an answer, use the \`updateQuestionnaireStateV2\` tool with:
+- \`question_id\`: "${currentQuestion.id}"
+- \`answer\`: Format according to the expected answer format above
+`;
+    }
+  } else if (!isComplete) {
+    // No current question set, but not complete - should start with Q0
+    const q0 = getQuestion("Q0");
+    if (q0) {
+      currentQuestionInfo = `## Current Question to Ask
+
+**Question ID:** ${q0.id}
+**Question Text:** "${q0.text}"
+**Expected Answer Format:** Object with age (number 18-150) and gender ("MALE" | "FEMALE")
+
+Use the \`updateQuestionnaireStateV2\` tool with:
+- \`question_id\`: "${q0.id}"
+- \`answer\`: An object \`{ age: number, gender: "MALE" | "FEMALE" }\`
+`;
+    }
+  }
 
   const prompt = `You are a friendly insurance questionnaire assistant helping users complete a health and lifestyle questionnaire for insurance eligibility.
 
 ## Current Questionnaire State
 
 **Demographics:**
-- Gender: ${state.gender ?? "Not provided"}
-- Age: ${state.age ?? "Not provided"}
-- Height: ${state.height ? `${state.height} cm` : "Not provided"}
-- Weight: ${state.weight ? `${state.weight} kg` : "Not provided"}
-- BMI: ${state.bmi ?? "Not calculated"}
-
-**Rate Type:** ${state.rateType ?? "Not determined"}
-
-**Eligible Plans:** ${state.eligiblePlans.join(", ") || "None"}
-**Best Eligible Plan:** ${bestPlanText}
-**Plan Floor (current highest eligible tier):** ${state.planFloor ?? bestPlanText}
-${state.currentPlan ? `**Current Plan:** ${state.currentPlan}` : ""}
-${state.declined ? `**Status:** DECLINED - ${state.declineReason ?? "No reason provided"}` : ""}
+- Age: ${deserializedState.age ?? "Not provided"}
+- Gender: ${deserializedState.gender ?? "Not provided"}
+- Height: ${deserializedState.height_cm ? `${deserializedState.height_cm} cm` : "Not provided"}
+- Weight: ${deserializedState.weight_kg ? `${deserializedState.weight_kg} kg` : "Not provided"}
+- Smoker: ${deserializedState.is_smoker !== null ? (deserializedState.is_smoker ? "Yes" : "No") : "Not provided"}
 
 **Progress:**
-- Questions Asked: ${state.questionsAsked.length}
-- Questions Answered: ${state.questionsAnswered.length}
-- Available Questions: ${availableQuestions.filter((q) => q.available && !q.answered).length}
-- Follow-up Queue Length: ${state.followUpQueue?.length ?? 0}
-
-${state.mentionedConditions && state.mentionedConditions.length > 0 ? `**Mentioned Conditions:** ${state.mentionedConditions.join(", ")}` : ""}
-
-## Available Questions
-
-**Mandatory Questions (Must be asked first if not answered):**
-${formatQuestionList(mandatoryQuestions)}
-
-**Priority Follow-ups (resolve in queue order):**
-${formatQuestionList(priorityFollowUps)}
-
-**Other Available Questions:**
-${formatQuestionList(otherAvailableQuestions)}
-
-**Fallback Question (use only when no follow-ups remain):**
-${formatQuestionList(fallbackQuestions)}
-
-**Pending Questions (Dependencies met, but not yet available):**
-${formatQuestionList(pendingQuestions)}
-
-**Answered Questions:**
-${formatQuestionList(answeredQuestions)}
+- Questions answered: ${answeredQuestions.length}
+- Answered question IDs: ${answeredQuestions.length > 0 ? answeredQuestions.join(", ") : "None"}
+- Status: ${isComplete ? "COMPLETE" : "IN PROGRESS"}
+${isComplete ? `- Best Plan: ${bestPlan}` : ""}
 
 ## Instructions
 
-1. **Plan-Aware Question Priority:**
-   - Always ask mandatory questions first (gender, q1, q2) if not answered.
-   - Focus on questions whose impact can push the client from the current plan floor to the next tier down (see the Plan Floor value and the IMPACT tag). Do not open new higher-tier questions once a lower floor is set.
-   - When the plan floor reaches **Guaranteed+**, only ask unresolved questions marked IMPACT: DECLINE. If all decline-trigger questions are cleared without triggering a decline, recommend **Guaranteed+** immediately; a positive decline trigger means the client is declined.
-   - Work through the follow-up queue in order before introducing any fallback question.
+1. **Starting the Questionnaire:**
+   - When the user wants to start an insurance questionnaire, use the \`getFirstQuestion\` tool to get Q0
+   - Then ask the user the first question: "How old are you, and what is your gender?"
 
-2. **Dynamic Condition Detection:**
-   - Listen for conditions mentioned by the user (e.g., "I have diabetes", "I had a heart attack", "I smoke")
-   - When you detect a new condition, use the \`updateQuestionnaireState\` tool to add it to \`addMentionedCondition\`
-   - Then ask relevant questions based on those conditions, even if they weren't in the original flow
+2. **Processing Answers:**
+   - When the user provides an answer to a question, use the \`updateQuestionnaireStateV2\` tool
+   - The tool requires:
+     - \`question_id\`: The ID of the question being answered (must match the current question ID)
+     - \`answer\`: The answer value formatted according to the question's expected format (see Current Question section below)
+   - The tool will validate the answer format and return the next question to ask
+   - After the tool call, extract the next question from the tool output and ask it to the user
 
-3. **Answering Questions:**
-   - When the user provides information that answers a question, use \`updateQuestionnaireState\` tool with \`answerQuestion\`
-   - Extract the answer in the correct format based on the question type
-   - The tool will validate dependencies and update the state automatically
-
-4. **Updating Demographics:**
-   - If the user provides age, gender, height, or weight, use \`updateQuestionnaireState\` with \`updateDemographics\`
-   - BMI will be calculated automatically if height and weight are provided
-
-5. **Natural Conversation Flow:**
+3. **Question Flow:**
+   - Follow the question flow determined by the rules system
+   - Each answer determines the next question automatically
    - Ask questions conversationally, not robotically
-   - If a user mentions something relevant, ask follow-up questions immediately
-   - Don't ask questions that are already answered unless the user is correcting an answer
-   - If a user corrects a previous answer, update it using the tool
-   - **ALWAYS provide a text response to the user, even when using tools**
-   - When a user asks about their profile, current state, or eligibility, provide a clear summary in your text response
 
-6. **Question Dependencies:**
-   - Some questions depend on others being answered first
-   - Check the dependencies list for each question
-   - Only ask questions when their dependencies are met
+4. **Completion:**
+   - When \`is_complete\` is true, check \`best_plan\`:
+     - If \`best_plan\` is "DENIAL": Inform the user they are denied for insurance. Be clear and empathetic.
+     - Otherwise: Provide the plan name from \`best_plan\` (e.g., "Day1", "Day1+", "Signature", "Deferred+", "Guaranteed+")
 
-7. **Completion:**
-   - Continue asking questions until all plan-impacting items are resolved.
-   - If declined, inform the user of the decline reason and make it explicit that they are not eligible for any plans; avoid re-opening new topics.
-   - If eligible, provide only the single best plan tier the client still qualifies for—do not enumerate every remaining option.
+5. **Tool Usage:**
+   - Always use tools to update state - don't manually track answers
+   - Show tool calls on the frontend so inputs/outputs are visible
+   - After each tool call, provide a natural language response to the user
+
+6. **Logging:**
+   - All state updates are logged automatically
+   - Check console logs for debugging information
+
+${currentQuestionInfo ? `\n${currentQuestionInfo}\n` : ""}
 
 ## Important Notes
 
-- Use the \`updateQuestionnaireState\` tool whenever you need to:
-  - Update demographics
-  - Answer a question
-  - Add mentioned conditions
-  - Set the next question to ask
-
-- Be conversational and friendly, but thorough
-- Don't skip questions that are relevant based on user responses or queued follow-ups
-- Once the follow-up queue is empty, re-evaluate before introducing new topics
-- If a user mentions something that triggers multiple questions, ask them all
-- When the questionnaire is complete, report only the single best plan the client qualifies for (or the decline reason). Do not list every eligible plan tier.
+- Use the \`updateQuestionnaireStateV2\` tool for every answer
+- Use the \`getFirstQuestion\` tool when starting a new questionnaire
+- When complete, inform the user of the result (DENIAL or plan name)
+- Be conversational and friendly throughout the process
+- Always provide a text response after using tools
 
 ${requestPrompt}`;
 

@@ -11,7 +11,6 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import type { QuestionnaireClientState } from "../questionaire/types";
 import type { AppUsage } from "../usage";
 
 export const user = pgTable("User", {
@@ -34,7 +33,7 @@ export const chat = pgTable("Chat", {
     .default("private"),
   lastContext: jsonb("lastContext").$type<AppUsage | null>(),
   questionaireMode: boolean("questionaireMode").notNull().default(false),
-  clientState: jsonb("clientState").$type<QuestionnaireClientState | null>(),
+  clientState: jsonb("clientState").$type<Record<string, unknown> | null>(),
   rateType: varchar("rateType", { enum: ["SMOKER", "NON_SMOKER"] }),
 });
 
@@ -63,9 +62,7 @@ export const message = pgTable("Message_v2", {
   parts: json("parts").notNull(),
   attachments: json("attachments").notNull(),
   createdAt: timestamp("createdAt").notNull(),
-  stateSnapshot: jsonb(
-    "stateSnapshot"
-  ).$type<QuestionnaireClientState | null>(),
+  stateSnapshot: jsonb("stateSnapshot").$type<Record<string, unknown> | null>(),
   answeredQuestionId: varchar("answeredQuestionId", { length: 10 }),
 });
 
