@@ -1,4 +1,5 @@
 import { getQuestion, type QUESTION_TYPE } from "../question_definitions";
+import { apply_rule_Q0 } from "./q0";
 import { apply_rule_Q1 } from "./q1";
 import { apply_rule_Q2 } from "./q2";
 import {
@@ -103,6 +104,8 @@ import { apply_rule_Q25, apply_rule_Q25res } from "./q25";
  */
 export function apply_rule(question: QUESTION_TYPE): QUESTION_TYPE | null {
   switch (question.id) {
+    case "Q0":
+      return apply_rule_Q0();
     case "Q1":
       return apply_rule_Q1();
     case "Q2":

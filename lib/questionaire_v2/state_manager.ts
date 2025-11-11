@@ -51,6 +51,20 @@ export function processQuestionAnswer(
  */
 function updateStateForQuestion(question_id: string, answer: unknown): void {
   switch (question_id) {
+    case "Q0":
+      // Q0: Age and gender -> update age and gender
+      if (
+        typeof answer === "object" &&
+        answer !== null &&
+        "age" in answer &&
+        "gender" in answer
+      ) {
+        const ag = answer as { age: number; gender: "MALE" | "FEMALE" };
+        clientState.age = ag.age;
+        clientState.gender = ag.gender;
+      }
+      break;
+
     case "Q1":
       // Q1: Tobacco usage -> update is_smoker
       if (typeof answer === "boolean") {

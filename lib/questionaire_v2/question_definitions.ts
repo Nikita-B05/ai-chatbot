@@ -54,6 +54,18 @@ export const answerSchemas = {
     .max(500)
     .describe("Weight in kilograms (20-500 kg)"),
   string: z.string().describe("A text string answer"),
+  ageAndGender: z
+    .object({
+      age: z
+        .number()
+        .int()
+        .positive()
+        .min(18)
+        .max(150)
+        .describe("Age in years (18-150)"),
+      gender: z.enum(["MALE", "FEMALE"]).describe("Gender: MALE or FEMALE"),
+    })
+    .describe("Age and gender information"),
 } as const;
 
 export type QUESTION_TYPE = {
@@ -98,6 +110,17 @@ export function updateBestPlan(plan: PLANS | "DENIAL"): void {
 // 7. We still have to handle the whole Q4 logic of checking Q18, either handle at the rules level or someplace else
 
 export const QUESTIONS = new Map<string, QUESTION_TYPE>([
+  // Q0: Age and Gender
+  [
+    "Q0",
+    {
+      id: "Q0",
+      text: "How old are you, and what is your gender?",
+      answer_type: answerSchemas.ageAndGender,
+      resulting_nodes: ["Q1"],
+    },
+  ],
+
   // Q1: Tobacco
   [
     "Q1",
