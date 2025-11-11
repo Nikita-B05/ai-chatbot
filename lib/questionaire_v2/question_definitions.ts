@@ -309,7 +309,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q10: Current symptoms
   {
     id: "Q10",
-    text: "Excluding annual tests, routine pregnancy or childbirth-related follow-ups with normal results, common cold, flu or seasonal allergies, strains or sprains: Do you have any physical or mental symptoms for which you have not yet consulted a health professional?",
+    text: "Excluding annual tests, routine pregnancy or childbirth-related follow-ups with normal results, common cold, flu or seasonal allergies, strains or sprains, do you have any physical or mental symptoms for which you have not yet consulted a health professional?",
     answer_type: "boolean",
     resulting_nodes: ["Q10B"],
     resulting_plans: ["Day1", "Guaranteed+"],
@@ -329,17 +329,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q11",
     text: "Excluding treated and controlled high blood pressure and/or cholesterol have you had or been told you have, been investigated, been treated, taken medication, or been prescribed medication, had surgery or a procedure for: Heart disease, heart attack, angina, heart murmur, abnormal heart rhythm, aneurysm, blood clots, cerebrovascular disease (stroke or mini-stroke such as TIA), or any other disease of the heart or the blood vessels (angioplasty, atherosclerosis, heart bypass, heart stent, peripheral vascular disease)?",
     answer_type: "boolean",
-    resulting_nodes: ["Q11bmi", "Q12"],
-    resulting_plans: ["Day1"],
-  },
-
-  // Q11bmi: BMI check for Q11
-  {
-    id: "Q11bmi",
-    text: "BMI ≥ 44.0?",
-    answer_type: "boolean",
-    resulting_nodes: ["Q11stable"],
-    resulting_plans: ["DENIAL"],
+    resulting_nodes: ["Q11stable", "Q12F", "Q12M"],
+    resulting_plans: ["Day1", "DENIAL"],
   },
 
   // Q11stable: Stable condition check
@@ -347,15 +338,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q11stable",
     text: "Are you currently free of symptoms, stable with regular follow-up with no pending surgery?",
     answer_type: "boolean",
-    resulting_nodes: ["Q11unstableSmokerCheck", "Q11dx"],
-  },
-
-  // Q11unstableSmokerCheck: Smoker check for unstable
-  {
-    id: "Q11unstableSmokerCheck",
-    text: "If Smoker → Guaranteed+; Else Deferred+",
-    answer_type: "string",
-    resulting_nodes: ["Q12"],
+    resulting_nodes: ["Q12F", "Q12M", "Q11dx"],
     resulting_plans: ["Guaranteed+", "Deferred+"],
   },
 
@@ -364,15 +347,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q11dx",
     text: "When were you diagnosed?",
     answer_type: "number",
-    resulting_nodes: ["Q11dx3SmokerAge", "Q11fu"],
-  },
-
-  // Q11dx3SmokerAge: Age/smoker check for ≤3 years
-  {
-    id: "Q11dx3SmokerAge",
-    text: "If age <40 OR Smoker → Guaranteed+; Else Deferred+",
-    answer_type: "string",
-    resulting_nodes: ["Q12"],
+    resulting_nodes: ["Q12F", "Q12M", "Q11fu"],
     resulting_plans: ["Guaranteed+", "Deferred+"],
   },
 
@@ -381,33 +356,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q11fu",
     text: "When was your last follow-up?",
     answer_type: "number",
-    resulting_nodes: ["Q11lt2", "Q11ge2"],
-  },
-
-  // Q11lt2: Evaluation for <2 years follow-up
-  {
-    id: "Q11lt2",
-    text: "Evaluate in order: If BMI <40 → Signature; Else if Age<40 or Smoker → Deferred+; Else Guaranteed+",
-    answer_type: "string",
-    resulting_nodes: ["Q12"],
-    resulting_plans: ["Signature", "Deferred+", "Guaranteed+"],
-  },
-
-  // Q11ge2: Evaluation for ≥2 years follow-up
-  {
-    id: "Q11ge2",
-    text: "Evaluate in order: If BMI<40 and (Age<40 or Smoker) → Guaranteed+; Else if BMI<40 → Deferred+; Else Guaranteed+",
-    answer_type: "string",
-    resulting_nodes: ["Q12"],
-    resulting_plans: ["Guaranteed+", "Deferred+"],
-  },
-
-  // Q12: Diabetes (routing question)
-  {
-    id: "Q12",
-    text: "Diabetes (Female/Male branches)",
-    answer_type: "string",
     resulting_nodes: ["Q12F", "Q12M"],
+    resulting_plans: ["Signature", "Deferred+", "Guaranteed+"],
   },
 
   // Q12F: Female branch
@@ -430,7 +380,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q12F1a: Complications check (Female Type 1)
   {
     id: "Q12F1a",
-    text: "If BMI >40 OR CAD(Q11)=Yes → Guaranteed+. Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions or nephropathy?",
+    text: "Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions or nephropathy?",
     answer_type: "boolean",
     resulting_nodes: ["Q12F1b", "Q13"],
     resulting_plans: ["Guaranteed+"],
@@ -456,7 +406,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q12F2a: Gestational diabetes control
   {
     id: "Q12F2a",
-    text: "If BMI >40 OR CAD(Q11)=Yes → Guaranteed+. Is your Gestational Diabetes currently under good control with HbA1c or A1C result of 7.5% or less than or equal to 7%?",
+    text: "Is your Gestational Diabetes currently under good control with HbA1c or A1C result of 7.5% or less than or equal to 7%?",
     answer_type: "boolean",
     resulting_nodes: ["Q13"],
     resulting_plans: ["Guaranteed+", "Signature", "Deferred+"],
@@ -473,19 +423,10 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q12F3a: HbA1c check with conditions (Female)
   {
     id: "Q12F3a",
-    text: "If age 18–24 OR CAD(Q11)=Yes → Deferred+. If BMI >40 → Guaranteed+. Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
+    text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
     answer_type: "boolean",
-    resulting_nodes: ["Q12F3b", "Q13"],
-    resulting_plans: ["Deferred+", "Guaranteed+", "Day1+"],
-  },
-
-  // Q12F3b: BMI bands for HbA1c ≥7.5% (Female)
-  {
-    id: "Q12F3b",
-    text: "If BMI 38–39 → Deferred+; 36–37.9 → Signature; 18–36 → Day1+",
-    answer_type: "string",
     resulting_nodes: ["Q13"],
-    resulting_plans: ["Deferred+", "Signature", "Day1+"],
+    resulting_plans: ["Deferred+", "Signature", "Guaranteed+", "Day1+"],
   },
 
   // Q12F4: Not pregnant logic
@@ -516,7 +457,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q12M1a: Complications check (Male Type 1)
   {
     id: "Q12M1a",
-    text: "If BMI > 40 OR YES TO CAD Q11 Guaranteed+. Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions, or nephropathy?",
+    text: "Have you ever had complications of your diabetes, such as amputation related to poor circulation or infection, hypo or hyperglycemic reactions, or nephropathy?",
     answer_type: "boolean",
     resulting_nodes: ["Q12M1b", "Q13"],
     resulting_plans: ["Guaranteed+"],
@@ -534,7 +475,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q12M2: On diabetes meds (Male)
   {
     id: "Q12M2",
-    text: "Are you currently taking or have you been prescribed any medication to treat your diabetes? If age 18–24 OR CAD(Q11)=Yes → Deferred+. If BMI >40 → Guaranteed+. Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
+    text: "Are you currently taking or have you been prescribed any medication to treat your diabetes?",
     answer_type: "boolean",
     resulting_nodes: ["Q12M2b", "Q13"],
     resulting_plans: ["Deferred+", "Guaranteed+", "Day1+"],
@@ -543,7 +484,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q12M2b: BMI bands for HbA1c ≥7.5% (Male)
   {
     id: "Q12M2b",
-    text: "If BMI 38–39 → Deferred+; 36–37.9 → Signature; 18–36 → Day1+",
+    text: "Have you monitored your blood sugar levels in the last 3 months with an average HbA1c or A1C result of 7.5% or more than or equal to 7.5%?",
     answer_type: "string",
     resulting_nodes: ["Q13"],
     resulting_plans: ["Deferred+", "Signature", "Day1+"],
@@ -580,7 +521,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q15O2",
     text: "Have you been on oxygen therapy in the last 2 years?",
     answer_type: "boolean",
-    resulting_nodes: ["Q16"],
+    resulting_nodes: ["Q16M", "Q16F"],
     resulting_plans: ["Guaranteed+", "Deferred+"],
   },
 
@@ -597,7 +538,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q15asthma",
     text: "Have you ever been diagnosed with asthma or chronic bronchitis?",
     answer_type: "boolean",
-    resulting_nodes: ["Q15sev", "Q16"],
+    resulting_nodes: ["Q15sev", "Q16M", "Q16F"],
     resulting_plans: ["Day1"],
   },
 
@@ -606,7 +547,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q15sev",
     text: "Have you been prescribed steroids, take 2 or more daily inhalers, admitted or hospitalized (within the last 12 hours) to control your asthma symptoms within the last 2 years?",
     answer_type: "boolean",
-    resulting_nodes: ["Q16"],
+    resulting_nodes: ["Q16M", "Q16F"],
     resulting_plans: ["Day1+", "Signature"],
   },
 
@@ -615,16 +556,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q15cpap",
     text: "Do you use a treatment everyday such as a BIPAP, CPAP, or any other machine or oral appliance?",
     answer_type: "boolean",
-    resulting_nodes: ["Q16"],
-    resulting_plans: ["Signature", "Day1+"],
-  },
-
-  // Q16: GU disorders (routing)
-  {
-    id: "Q16",
-    text: "GU disorders",
-    answer_type: "string",
     resulting_nodes: ["Q16M", "Q16F"],
+    resulting_plans: ["Signature", "Deferred+", "Day1+"],
   },
 
   // Q16M: Male GU disorders
@@ -695,15 +628,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q17szOnly",
     text: "Were you diagnosed with only seizure or epilepsy disorder?",
     answer_type: "boolean",
-    resulting_nodes: ["Q17comb", "Q17szCount"],
-  },
-
-  // Q17comb: Combo with Q18 (non-seizure)
-  {
-    id: "Q17comb",
-    text: "If Q18=Yes → Guaranteed+; Otherwise Deferred+",
-    answer_type: "string",
-    resulting_nodes: ["Q18"],
+    resulting_nodes: ["Q17szCount"],
     resulting_plans: ["Guaranteed+", "Deferred+"],
   },
 
@@ -712,17 +637,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q17szCount",
     text: "How many seizures have you had in the last 12 months?",
     answer_type: "number",
-    resulting_nodes: ["Q17sz0", "Q17meds1", "Q17meds2", "Q18"],
-    resulting_plans: ["Guaranteed+"],
-  },
-
-  // Q17sz0: Zero seizures with Q18 check
-  {
-    id: "Q17sz0",
-    text: "If Q18 Yes → Signature+; Otherwise Day1+",
-    answer_type: "string",
-    resulting_nodes: ["Q18"],
-    resulting_plans: ["Signature", "Day1+"],
+    resulting_nodes: ["Q18", "Q17meds1", "Q17meds2", "Q18"],
+    resulting_plans: ["Signature", "Day1+", "Guaranteed+"],
   },
 
   // Q17meds1: Medications for 1-3 seizures
@@ -730,17 +646,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q17meds1",
     text: "Are you currently prescribed more than 1 medication?",
     answer_type: "boolean",
-    resulting_nodes: ["Q17comb2", "Q18"],
-    resulting_plans: ["Signature"],
-  },
-
-  // Q17comb2: Combo with Q18 (1-3 seizures, multiple meds)
-  {
-    id: "Q17comb2",
-    text: "If Q18 Yes → Guaranteed+; Otherwise Deferred+",
-    answer_type: "string",
     resulting_nodes: ["Q18"],
-    resulting_plans: ["Guaranteed+", "Deferred+"],
+    resulting_plans: ["Guaranteed+", "Deferred+", "Signature"],
   },
 
   // Q17meds2: Medications for 4-6 seizures
