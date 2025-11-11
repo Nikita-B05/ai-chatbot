@@ -1,4 +1,6 @@
-type PLANS = "Day1" | "Day1+" | "Signature" | "Deferred+" | "Guaranteed+";
+import { clientState } from "./state";
+
+export type PLANS = "Day1" | "Day1+" | "Signature" | "Deferred+" | "Guaranteed+";
 
 export type QUESTION_TYPE = {
   id: string;
@@ -7,6 +9,28 @@ export type QUESTION_TYPE = {
   resulting_nodes?: string[]; // Changed to string[] to reference question IDs
   resulting_plans?: Array<PLANS | "DENIAL">;
 };
+
+export function getQuestion(id: string): QUESTION_TYPE | null {
+  const question = QUESTIONS.get(id);
+  if (!question) {
+      console.error(`Could not get question ${id}.`);
+      return null;
+  }
+  return question;
+}
+
+export function updateBestPlan(plan: PLANS | "DENIAL"): void {
+  const PLAN_PRIORITY: Record<PLANS | "DENIAL", number> = {
+    DENIAL: 0,
+    "Deferred+": 1,
+    "Guaranteed+": 2,
+    Day1: 3,
+    "Day1+": 4,
+    Signature: 5,
+  };
+
+  if (PLAN_PRIORITY[plan] < PLAN_PRIORITY[clientState.best_plan]) clientState.best_plan = plan;
+}
 
 // Assumptions:
 // 1. resulting_nodes contains question IDs (strings) that can be reached from this question
@@ -665,6 +689,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     text: "Have you ever been diagnosed with a mental health disorder such as severe anxiety, severe depression, bipolar, epilepsy, schizophrenia, psychosis, or attempted suicide? (Severe anxiety or severe depression: Multiple episodes, last episode within the last 24 months, time off work or school less than 2 weeks, or with a history of hospitalization.)",
     answer_type: "boolean",
     resulting_nodes: ["Q18meds", "Q18mod"],
+    resulting_plans: ["Guaranteed+"],
   },
 
   // Q18meds: Medications for severe mental health
@@ -681,17 +706,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q18mod",
     text: "[Male] Have you ever experienced moderate anxiety, moderate depression, or a personality disorder? [Female] Have you ever experienced moderate anxiety, moderate depression (including postpartum depression), or a personality disorder? (Moderate anxiety or moderate depression: Multiple episodes with none within the last 24 months, time off work or school less than 2 weeks, and with NO previous history of hospitalization.)",
     answer_type: "boolean",
-    resulting_nodes: ["Q18comb", "Q19"],
-    resulting_plans: ["Day1"],
-  },
-
-  // Q18comb: Combo check for moderate
-  {
-    id: "Q18comb",
-    text: "If Q6=Yes but not Q8 OR Q4 ≥21 → Deferred+; Else Day1+",
-    answer_type: "string",
     resulting_nodes: ["Q19"],
-    resulting_plans: ["Deferred+", "Day1+"],
+    resulting_plans: ["Deferred+", "Day1", "Day1+"],
   },
 
   // Q19: GI/hepatic/pancreas
@@ -699,17 +715,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q19",
     text: "Have you ever been diagnosed with Crohn's disease, ulcerative colitis, hepatitis (excluding hepatitis A), pancreatitis, pancreatic cancer, intestinal bleeding, or other disorders of the stomach, intestine (excluding irritable bowel syndrome - IBS), liver, or pancreas?",
     answer_type: "boolean",
-    resulting_nodes: ["Q19bmi", "Q20"],
-    resulting_plans: ["Day1"],
-  },
-
-  // Q19bmi: BMI check for GI
-  {
-    id: "Q19bmi",
-    text: "BMI < 18?",
-    answer_type: "boolean",
     resulting_nodes: ["Q19IBD", "Q20"],
-    resulting_plans: ["Guaranteed+"],
+    resulting_plans: ["Guaranteed+", "Day1"],
   },
 
   // Q19IBD: IBD diagnosis timing
@@ -735,15 +742,6 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q19sev",
     text: "Have you had 2 surgeries or more within the last 5 years, missed any time off work/school in the last 2 years, been hospitalized within the last 2 years, or had a flare within the last 12 months?",
     answer_type: "boolean",
-    resulting_nodes: ["Q19bmiband", "Q20"],
-    resulting_plans: ["Signature"],
-  },
-
-  // Q19bmiband: BMI bands for GI
-  {
-    id: "Q19bmiband",
-    text: "If BMI 18–20 → Signature; Otherwise Day1+",
-    answer_type: "string",
     resulting_nodes: ["Q20"],
     resulting_plans: ["Signature", "Day1+"],
   },
@@ -771,15 +769,6 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q21prog",
     text: "In the last 2 years, were you diagnosed with multiple sclerosis, progressive pattern with loss of bowel, or bladder function?",
     answer_type: "boolean",
-    resulting_nodes: ["Q21age", "Q22"],
-    resulting_plans: ["Guaranteed+"],
-  },
-
-  // Q21age: Age/Q18 severity check
-  {
-    id: "Q21age",
-    text: "If Age > 40 OR (Q18 severity ≥ Signature) → Guaranteed+; Else continue",
-    answer_type: "string",
     resulting_nodes: ["Q21amb", "Q22"],
     resulting_plans: ["Guaranteed+"],
   },
@@ -787,7 +776,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q21amb: Ambulatory/disability issues
   {
     id: "Q21amb",
-    text: "Do you currently have ambulatory or disability issues, or have you had more than 2 attacks in the 12 months? (Ambulatory issues include being unable to walk less than 200 meters or 1 flight of stairs per day, or assistance devices such as a cane, crutches or brace, wheelchair)",
+    text: "Do you currently have ambulatory or disability issues, or have you had more than 2 attacks in the last 12 months? (Ambulatory issues include being unable to walk less than 200 meters or 1 flight of stairs per day, or assistance devices such as a cane, crutches or brace, wheelchair)",
     answer_type: "boolean",
     resulting_nodes: ["Q22"],
     resulting_plans: ["Deferred+", "Signature"],
@@ -805,7 +794,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q22dep: Dependency check
   {
     id: "Q22dep",
-    text: "If YES to #12 (DM) or #16 (GU) or If BMI >43 → Guaranteed+. Have you ever experienced daily symptoms such as loss of movement or disability, or have you ever undergone surgery to treat your condition?",
+    text: "Have you ever experienced daily symptoms such as loss of movement or disability, or have you ever undergone surgery to treat your condition?",
     answer_type: "boolean",
     resulting_nodes: ["Q22meds", "Q23"],
     resulting_plans: ["Guaranteed+", "Signature"],
@@ -816,17 +805,8 @@ export const QUESTIONS: QUESTION_TYPE[] = [
     id: "Q22meds",
     text: "Are you currently on any prescribed daily medication to control your symptoms?",
     answer_type: "boolean",
-    resulting_nodes: ["Q22age", "Q23"],
-    resulting_plans: ["Day1"],
-  },
-
-  // Q22age: Age check
-  {
-    id: "Q22age",
-    text: "Age < 40?",
-    answer_type: "boolean",
     resulting_nodes: ["Q23"],
-    resulting_plans: ["Signature", "Day1+"],
+    resulting_plans: ["Signature", "Day1", "Day1+"],
   },
 
   // Q23: High-risk activities
@@ -859,7 +839,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q24: Family history
   {
     id: "Q24",
-    text: "To your knowledge, have any of your immediate family member(s) (father, mother, brother or sister), ever been diagnosed before the age of 65 with Amyotrophic Lateral Sclerosis, Cardiomyopathy, Hereditary non-polyposis colon cancer, Huntington's disease, Lynch syndrome, Huntington's disease, Muscular dystrophy, or Polycystic kidney disease?",
+    text: "To your knowledge, have any of your immediate family member(s) (father, mother, brother or sister), ever been diagnosed before the age of 65 with Amyotrophic Lateral Sclerosis, Cardiomyopathy, Hereditary non-polyposis colon cancer, Huntington's disease, Lynch syndrome, Muscular dystrophy, or Polycystic kidney disease?",
     answer_type: "boolean",
     resulting_nodes: ["Q24two", "Q25"],
     resulting_plans: ["Deferred+"],
@@ -877,7 +857,7 @@ export const QUESTIONS: QUESTION_TYPE[] = [
   // Q24under50: Diagnosis before age 50
   {
     id: "Q24under50",
-    text: "Has 1 or more immediate family members been diagnosed before the age of 50?",
+    text: "Before age 50, has 1 or more of your immediate family members (mother, father, brother or sister) been diagnosed with cancer, stroke, heart attack, angina, bypass, angioplasty, multiple sclerosis, motor neuron disease, Alzheimer's disease or dementia?",
     answer_type: "boolean",
     resulting_nodes: ["Q25"],
     resulting_plans: ["Signature", "Day1+"],
