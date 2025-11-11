@@ -28,9 +28,23 @@ export const updateQuestionnaireStateV2 = ({
           "The ID of the question being answered (e.g., 'Q0', 'Q1', 'Q2')"
         ),
       answer: z
-        .any()
+        .union([
+          z.enum(["yes", "no"]),
+          z.number(),
+          z.object({
+            age: z.number().int().positive().min(18).max(150),
+            gender: z
+              .string()
+              .transform((val) => val.toUpperCase())
+              .pipe(z.enum(["MALE", "FEMALE"])),
+          }),
+          z.object({
+            height_cm: z.number().positive().min(50).max(300),
+            weight_kg: z.number().positive().min(20).max(500),
+          }),
+        ])
         .describe(
-          "The answer to the question. The type must match the question's expected schema type. Check the current question's Expected Answer Format in the prompt to determine the correct type. Common types: boolean (true/false), number (for numeric answers like frequency, age, weight), string (for text), or object (for Q0: {age, gender}, Q2: {height_cm, weight_kg}). IMPORTANT: For numeric questions, provide a number, not a string (e.g., use 2, not 'twice' or '2')."
+          "The answer to the question. Must be 'yes', 'no', a number, or an object for Q0 ({age, gender}) or Q2 ({height_cm, weight_kg})."
         ),
     }),
     execute: (input) => {

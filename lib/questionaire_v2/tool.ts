@@ -18,7 +18,7 @@ export const generateQuestionAnswer = tool({
       ),
     answer: z
       .union([
-        z.boolean(),
+        z.enum(["yes", "no"]),
         z.number(),
         z.string(),
         z.object({

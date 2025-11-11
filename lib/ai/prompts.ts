@@ -262,7 +262,7 @@ export const questionnairePromptV2 = ({
   - **For a client**: Use "they/their" or "your client" (e.g., "How old is your client?" or "What's their age?")
 - When the user provides an answer, you MUST convert it to the correct type:
   - If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
-  - If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
+  - If the answer type is "yes_no", provide "yes" or "no" (e.g., if user says "yes, xxx", use "yes")
   - If the answer type is "string", provide the text as-is
   - If the answer type is "Object", provide an object with the required fields
 
@@ -290,7 +290,7 @@ When the user provides an answer, use the \`updateQuestionnaireStateV2\` tool wi
   - **For a client**: Use "they/their" or "your client" (e.g., "How old is your client?" or "What's their age?")
 - When the user provides an answer, you MUST convert it to the correct type:
   - If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
-  - If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
+  - If the answer type is "yes_no", provide "yes" or "no" (e.g., if user says "yes, I xxx", use "yes")
   - If the answer type is "string", provide the text as-is
   - If the answer type is "Object", provide an object with the required fields
 
