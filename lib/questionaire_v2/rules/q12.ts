@@ -200,8 +200,9 @@ export function apply_rule_Q12F3(): QUESTION_TYPE | null {
     // Otherwise -> Q12F3a (HbA1c >= 7.5%?)
     return getQuestion("Q12F3a");
   }
-  // NO (not on meds) -> Q12F4 -> Q13
-  return getQuestion("Q12F4");
+  // NO (not on meds) -> Q13
+  updateBestPlan("Day1+");
+  return getQuestion("Q13");
 }
 
 /**
@@ -218,7 +219,7 @@ export function apply_rule_Q12F3a(): QUESTION_TYPE | null {
 
   if (!answer) {
     // NO (HbA1c < 7.5%) -> Day1+ -> Q13
-    updateBestPlan("Day1+");
+    updateBestPlan("Deferred+");
     return getQuestion("Q13");
   }
 
@@ -243,16 +244,6 @@ export function apply_rule_Q12F3a(): QUESTION_TYPE | null {
   }
   // BMI not in range or not available -> Deferred+ -> Q13
   updateBestPlan("Deferred+");
-  return getQuestion("Q13");
-}
-
-/**
- * Rule for Q12F4: Not pregnant: apply same meds/HbA1c/BMI logic if meds later
- * @returns the next question on success
- * @returns null on error or out of questions
- */
-export function apply_rule_Q12F4(): QUESTION_TYPE | null {
-  // i dont get it tbh
   return getQuestion("Q13");
 }
 
