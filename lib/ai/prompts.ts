@@ -147,61 +147,144 @@ export const questionnairePromptV2 = ({
   const bestPlan = deserializedState.best_plan ?? "Day1";
   const currentQuestionId = deserializedState.current_question_id;
 
+  // Helper function to extract Zod schema type information
+  const getSchemaTypeInfo = (
+    schema: unknown,
+    depth = 0,
+    maxDepth = 3
+  ): string => {
+    // Prevent infinite recursion
+    if (depth > maxDepth) {
+      return "object (nested)";
+    }
+
+    try {
+      const zodSchema = schema as {
+        _def?: {
+          typeName?: string;
+          description?: string;
+          checks?: Array<{ kind: string; value?: unknown }>;
+          innerType?: { _def?: { typeName?: string } };
+          shape?: Record<string, unknown>;
+        };
+        description?: () => string;
+      };
+
+      // Get description if available
+      let description = "";
+      if (zodSchema.description) {
+        description = zodSchema.description();
+      } else if (zodSchema._def?.description) {
+        description = zodSchema._def.description;
+      }
+
+      // Determine the base type
+      const typeName = zodSchema._def?.typeName;
+      let typeInfo = "";
+
+      if (typeName === "ZodObject") {
+        // Object type - extract shape information
+        const shape = zodSchema._def?.shape;
+        if (shape) {
+          const fields = Object.entries(shape)
+            .map(([key, fieldSchema]) => {
+              const fieldType = getSchemaTypeInfo(
+                fieldSchema,
+                depth + 1,
+                maxDepth
+              );
+              return `${key}: ${fieldType}`;
+            })
+            .join(", ");
+          typeInfo = `Object with { ${fields} }`;
+        } else {
+          typeInfo = "Object";
+        }
+      } else if (typeName === "ZodNumber") {
+        typeInfo = "number";
+        // Add constraints if available
+        const checks = zodSchema._def?.checks || [];
+        const constraints: string[] = [];
+        for (const check of checks) {
+          if (check.kind === "min") {
+            constraints.push(`min: ${check.value}`);
+          } else if (check.kind === "max") {
+            constraints.push(`max: ${check.value}`);
+          } else if (check.kind === "int") {
+            constraints.push("integer");
+          } else if (check.kind === "nonnegative") {
+            constraints.push("non-negative");
+          }
+        }
+        if (constraints.length > 0) {
+          typeInfo += ` (${constraints.join(", ")})`;
+        }
+      } else if (typeName === "ZodBoolean") {
+        typeInfo = "boolean";
+      } else if (typeName === "ZodString") {
+        typeInfo = "string";
+      } else if (typeName === "ZodEnum") {
+        typeInfo = "enum";
+      } else {
+        // Fallback: try to infer from description or use generic
+        typeInfo = "unknown";
+      }
+
+      // Combine type info with description
+      if (description && typeInfo !== description) {
+        return `${typeInfo} - ${description}`;
+      }
+      return typeInfo || description || "unknown type";
+    } catch {
+      return "unknown type";
+    }
+  };
+
   // Get the current question to ask (if not complete)
   let currentQuestionInfo = "";
   if (!isComplete && currentQuestionId) {
     const currentQuestion = getQuestion(currentQuestionId);
     if (currentQuestion) {
-      // Get answer schema description
-      let answerFormatDescription = "";
-      try {
-        // Try to get description from zod schema
-        const schemaDef = currentQuestion.answer_type as {
-          description?: () => string;
-          _def?: { description?: string };
-        };
-        if (schemaDef.description) {
-          answerFormatDescription = schemaDef.description();
-        } else if (schemaDef._def?.description) {
-          answerFormatDescription = schemaDef._def.description;
-        } else if (currentQuestionId === "Q0") {
-          // Fallback: describe based on type
-          answerFormatDescription =
-            'Object with age (number 18-150) and gender ("MALE" | "FEMALE")';
-        } else if (currentQuestionId === "Q2") {
-          answerFormatDescription =
-            "Object with height_cm (number 50-300) and weight_kg (number 20-500)";
-        } else {
-          answerFormatDescription = "Check question definition for format";
-        }
-      } catch {
-        answerFormatDescription = "See tool schema for format";
-      }
+      // Get answer schema type information
+      const answerTypeInfo = getSchemaTypeInfo(currentQuestion.answer_type);
 
       currentQuestionInfo = `## Current Question to Ask
 
 **Question ID:** ${currentQuestion.id}
 **Question Text:** "${currentQuestion.text}"
-**Expected Answer Format:** ${answerFormatDescription}
+**Expected Answer Type:** ${answerTypeInfo}
+
+**IMPORTANT:** When the user provides an answer, you MUST convert it to the correct type:
+- If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
+- If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
+- If the answer type is "string", provide the text as-is
+- If the answer type is "Object", provide an object with the required fields
 
 When the user provides an answer, use the \`updateQuestionnaireStateV2\` tool with:
 - \`question_id\`: "${currentQuestion.id}"
-- \`answer\`: Format according to the expected answer format above
+- \`answer\`: The answer converted to the expected type above (NOT a string representation)
 `;
     }
   } else if (!isComplete) {
     // No current question set, but not complete - should start with Q0
     const q0 = getQuestion("Q0");
     if (q0) {
+      const answerTypeInfo = getSchemaTypeInfo(q0.answer_type);
       currentQuestionInfo = `## Current Question to Ask
 
 **Question ID:** ${q0.id}
 **Question Text:** "${q0.text}"
-**Expected Answer Format:** Object with age (number 18-150) and gender ("MALE" | "FEMALE")
+**Expected Answer Type:** ${answerTypeInfo}
+
+**IMPORTANT:** When the user provides an answer, you MUST convert it to the correct type:
+- If the answer type is "number", provide a numeric value (e.g., if user says "twice", use 2; if they say "five", use 5)
+- If the answer type is "boolean", provide true or false (e.g., if user says "yes", use true; if "no", use false)
+- If the answer type is "string", provide the text as-is
+- If the answer type is "Object", provide an object with the required fields
 
 Use the \`updateQuestionnaireStateV2\` tool with:
 - \`question_id\`: "${q0.id}"
-- \`answer\`: An object \`{ age: number, gender: "MALE" | "FEMALE" }\`
+- \`answer\`: The answer converted to the expected type above (NOT a string representation)
 `;
     }
   }
